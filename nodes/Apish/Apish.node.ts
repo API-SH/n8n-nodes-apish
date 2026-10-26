@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeProperties, INodePropertyOptions, INodeType, INodeTypeDescription } from "n8n-workflow";
-import { NodeApiError, NodeOperationError } from "n8n-workflow";
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from "n8n-workflow";
 // resources (platforms) and operations (endpoints) with their parameters, generated from the API.SH catalog
 import { CATALOG } from "./catalog";
 import type { Param, Platform } from "./types";
@@ -28,11 +28,14 @@ function properties(): INodeProperties[] {
     { displayName: "Request ID", name: "requestId", type: "string", default: "", required: true, description: "The request ID of the earlier call, from its response headers", displayOptions: { show: { resource: ["account"], operation: ["/v1/results"] } } },
   ];
   for (const p of CATALOG) {
-    // eslint-disable-next-line n8n-nodes-base/node-param-default-missing -- one generated operation list per platform; its default is that platform's first endpoint
-    props.push({
-      displayName: "Operation", name: "operation", type: "options", noDataExpression: true, displayOptions: { show: { resource: [p.value] } }, default: p.operations[0].value,
-      options: p.operations.map((o) => ({ name: o.name, value: o.value, description: `${o.value} · ${o.credits} credit${o.credits === 1 ? "" : "s"}`, action: o.name })),
-    });
+    const opOptions: INodePropertyOptions[] = p.operations.map((o) => ({ name: o.name, value: o.value, description: `${o.value} · ${o.credits} credit${o.credits === 1 ? "" : "s"}`, action: o.name }));
+    const op: INodeProperties = {
+      displayName: "Operation", name: "operation", type: "options", noDataExpression: true, displayOptions: { show: { resource: [p.value] } }, default: "",
+      options: opOptions,
+    };
+    // each platform's operation list starts on its first endpoint
+    op.default = p.operations[0].value;
+    props.push(op);
     for (const o of p.operations) {
       for (const q of o.params) {
         const show = { show: { resource: [p.value], operation: [o.value] } };
@@ -76,12 +79,12 @@ export class Apish implements INodeType {
     subtitle: '={{$parameter["operation"]}}',
     description: "Public web data as clean JSON: TikTok, Instagram, Amazon, Zillow, Google and 70+ platforms",
     defaults: { name: "API.SH" },
-    inputs: ["main"],
-    outputs: ["main"],
+    inputs: [NodeConnectionTypes.Main],
+    outputs: [NodeConnectionTypes.Main],
     usableAsTool: true,
     credentials: [{ name: "apishApi", required: true }],
     properties: properties(),
-  } as INodeTypeDescription;
+  };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
@@ -111,14 +114,14 @@ export class Apish implements INodeType {
         }
         const res = (await this.helpers.httpRequestWithAuthentication.call(this, "apishApi", {
           method: "GET", url: `https://api.api.sh${route}`, qs, json: true, timeout: 120_000, returnFullResponse: true,
-          headers: { "user-agent": "n8n-nodes-apish/0.2.0" },
+          headers: { "user-agent": "n8n-nodes-apish/0.2.2" },
         })) as { body: IDataObject; headers: Record<string, string> };
         const meta = { request_id: res.headers["x-request-id"] ?? null, credits_used: Number(res.headers["x-credits-used"] ?? 0) };
         if (split) for (const r of records(res.body)) out.push({ json: { ...r }, pairedItem: { item: i } });
         else out.push({ json: { ...res.body, _apish: meta }, pairedItem: { item: i } });
       } catch (err) {
         if (this.continueOnFail()) { out.push({ json: { error: (err as Error).message }, pairedItem: { item: i } }); continue; }
-        if (err instanceof NodeOperationError) throw err;
+        if (err instanceof NodeOperationError) throw new NodeOperationError(this.getNode(), err, { itemIndex: i });
         throw new NodeApiError(this.getNode(), err as never, { itemIndex: i });
       }
     }

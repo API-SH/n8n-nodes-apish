@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-apish",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "API.SH node for n8n: public web data from TikTok, Instagram, Amazon, Zillow, Google and 80+ platforms as clean JSON.",
   "keywords": [
     "n8n-community-node-package",
