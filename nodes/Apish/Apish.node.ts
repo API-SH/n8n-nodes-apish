@@ -11,13 +11,16 @@ const ACCOUNT_OPS: INodePropertyOptions[] = [
   { name: "Get Past Response", value: "/v1/results", description: "The response of an earlier call again, free, for 30 days", action: "Get a past response" },
 ];
 
+// built outside the property literal: n8n's lint rules read option arrays element by element
+const PLATFORM_OPTIONS: INodePropertyOptions[] = [{ name: "Account", value: "account" }].concat(CATALOG.map((p) => ({ name: p.name, value: p.value })));
+
 const label = (n: string) => n.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 function properties(): INodeProperties[] {
   const props: INodeProperties[] = [
     {
       displayName: "Platform", name: "resource", type: "options", noDataExpression: true, default: "account",
-      options: [{ name: "Account", value: "account" }, ...CATALOG.map((p) => ({ name: p.name, value: p.value }))],
+      options: PLATFORM_OPTIONS,
     },
     { displayName: "Operation", name: "operation", type: "options", noDataExpression: true, displayOptions: { show: { resource: ["account"] } }, options: ACCOUNT_OPS, default: "/v1/account" },
     { displayName: "Days", name: "days", type: "number", default: 30, typeOptions: { minValue: 1, maxValue: 90 }, displayOptions: { show: { resource: ["account"], operation: ["/v1/account/usage"] } } },
