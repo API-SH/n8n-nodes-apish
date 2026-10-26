@@ -40,8 +40,14 @@ function properties(): INodeProperties[] {
       for (const q of o.params) {
         const show = { show: { resource: [p.value], operation: [o.value] } };
         const base = { displayName: label(q.name), name: `p_${q.name}`, required: q.required, description: q.description || undefined, displayOptions: show, placeholder: q.example ? `e.g. ${q.example}` : undefined };
-        if (q.enum) props.push({ ...base, type: "options", options: q.enum.map((v) => ({ name: v, value: v })), default: q.default ?? (q.required ? q.enum[0] : "") } as INodeProperties);
-        else if (q.type === "integer" || q.type === "number") props.push({ ...base, type: "number", default: q.default !== undefined ? Number(q.default) : (undefined as unknown as number) } as INodeProperties);
+        // an optional list starts on "Default" (left out of the call, so the API's own default applies)
+        if (q.enum) {
+          const enumOptions: INodePropertyOptions[] = q.required ? [] : [{ name: "Default", value: "" }];
+          for (const v of q.enum) enumOptions.push({ name: v, value: v });
+          props.push({ ...base, type: "options", options: enumOptions, default: q.default ?? (q.required ? q.enum[0] : "") } as INodeProperties);
+        }
+        if (q.enum) continue;
+        if (q.type === "integer" || q.type === "number") props.push({ ...base, type: "number", default: q.default !== undefined ? Number(q.default) : (undefined as unknown as number) } as INodeProperties);
         else props.push({ ...base, type: "string", default: q.default ?? "" } as INodeProperties);
       }
     }
@@ -114,7 +120,7 @@ export class Apish implements INodeType {
         }
         const res = (await this.helpers.httpRequestWithAuthentication.call(this, "apishApi", {
           method: "GET", url: `https://api.api.sh${route}`, qs, json: true, timeout: 120_000, returnFullResponse: true,
-          headers: { "user-agent": "n8n-nodes-apish/0.2.2" },
+          headers: { "user-agent": "n8n-nodes-apish/0.2.3" },
         })) as { body: IDataObject; headers: Record<string, string> };
         const meta = { request_id: res.headers["x-request-id"] ?? null, credits_used: Number(res.headers["x-credits-used"] ?? 0) };
         if (split) for (const r of records(res.body)) out.push({ json: { ...r }, pairedItem: { item: i } });
