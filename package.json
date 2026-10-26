@@ -1,0 +1,62 @@
+{
+  "name": "n8n-nodes-apish",
+  "version": "0.2.0",
+  "description": "API.SH node for n8n: public web data from TikTok, Instagram, Amazon, Zillow, Google and 80+ platforms as clean JSON.",
+  "keywords": [
+    "n8n-community-node-package",
+    "api.sh",
+    "apish",
+    "web data",
+    "tiktok",
+    "instagram",
+    "amazon",
+    "google"
+  ],
+  "license": "MIT",
+  "homepage": "https://api.sh/docs/sdks#n8n",
+  "author": {
+    "name": "API.SH",
+    "email": "support@api.sh"
+  },
+  "main": "index.js",
+  "files": [
+    "dist",
+    "examples"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc && cp nodes/Apish/apish.svg dist/nodes/Apish/ && cp credentials/apish.svg dist/credentials/",
+    "test": "node test/unit.cjs",
+    "prepublishOnly": "npm run build && npm test",
+    "lint": "eslint nodes credentials package.json"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/ApishApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Apish/Apish.node.js"
+    ]
+  },
+  "devDependencies": {
+    "n8n-workflow": "2.16.0",
+    "typescript": "5.6.3",
+    "@types/node": "20.16.10",
+    "eslint": "8.57.1",
+    "eslint-plugin-n8n-nodes-base": "2.0.0",
+    "@typescript-eslint/parser": "7.18.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/API-SH/n8n-nodes-apish.git"
+  },
+  "bugs": {
+    "url": "https://github.com/API-SH/n8n-nodes-apish/issues"
+  },
+  "engines": {
+    "node": ">=20.15"
+  }
+}

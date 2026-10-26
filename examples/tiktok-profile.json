@@ -1,0 +1,15 @@
+{
+  "name": "API.SH: TikTok profile",
+  "nodes": [
+    { "parameters": {}, "name": "When clicking 'Test workflow'", "type": "n8n-nodes-base.manualTrigger", "typeVersion": 1, "position": [0, 0] },
+    {
+      "parameters": { "resource": "tiktok", "operation": "/tiktok/v1/profile", "p_username": "nasa", "options": {} },
+      "name": "API.SH",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 1,
+      "position": [240, 0],
+      "credentials": { "apishApi": { "id": "", "name": "API.SH API" } }
+    }
+  ],
+  "connections": { "When clicking 'Test workflow'": { "main": [[{ "node": "API.SH", "type": "main", "index": 0 }]] } }
+}

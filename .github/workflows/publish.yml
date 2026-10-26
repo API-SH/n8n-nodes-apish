@@ -1,0 +1,25 @@
+# Public repository github.com/API-SH/n8n-nodes-apish.
+# Publishes to npm with provenance when a version tag (v*) is pushed, using npm trusted publishing
+# (no token stored here: npmjs.com → package → Settings → Trusted publishing → GitHub Actions, API-SH / n8n-nodes-apish / publish.yml).
+name: publish
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@11
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm run lint
+      - run: npm publish --provenance --access public
