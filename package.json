@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-apish",
-  "version": "0.2.3",
-  "description": "API.SH node for n8n: public web data from TikTok, Instagram, Amazon, Zillow, Google and 80+ platforms as clean JSON.",
+  "version": "0.3.0",
+  "description": "API.SH node for n8n: public web data from TikTok, Instagram, Amazon, Zillow, Google and 150+ platforms as clean JSON.",
   "keywords": [
     "n8n-community-node-package",
     "api.sh",
@@ -24,6 +24,7 @@
     "examples"
   ],
   "scripts": {
+    "generate": "node ../generate.mjs",
     "build": "rm -rf dist && tsc && cp nodes/Apish/apish.svg dist/nodes/Apish/ && cp credentials/apish.svg dist/credentials/",
     "test": "node test/unit.cjs",
     "prepublishOnly": "npm run build && npm test",

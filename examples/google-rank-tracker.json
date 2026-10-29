@@ -1,0 +1,517 @@
+{
+  "name": "Track Google keyword rankings in Google Sheets with drop alerts using API.SH",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Track your Google rankings weekly and get alerted on drops\n\n### How it works\nEvery Monday this workflow reads your keywords from a Google Sheet, runs each one through Google search with the **API.SH** node, and finds where your domain ranks in the results (subdomains count). It logs the date, position, ranking URL and the domain in first place to a **History** tab, saves the latest position on the keyword row, and emails you once when keywords drop by your threshold or fall out of the results checked.\n\n### Setup\n1. Install the verified **API.SH** node (nodes panel → search \"API.SH\") and add your API key from [api.sh](https://api.sh). Every 10 results checked cost 1 credit per keyword (30 results = 3 credits); every account gets 1,000 free credits a month.\n2. Create a Google Sheet with a **Keywords** tab (headers `keyword`, `last_position`, `last_url`, `last_checked`) and a **History** tab (headers `date`, `keyword`, `position`, `url`, `previous_position`, `change`, `top_result`).\n3. Paste the sheet URL into the three Google Sheets nodes and connect Google Sheets and Gmail.\n4. In **Settings**, set your domain, country, how many results to check and the alert threshold.\n\n### Customization\nRun it daily, add a `location` to the API.SH node for local rankings, or post the summary to Slack.",
+        "height": 780,
+        "width": 480
+      },
+      "id": "1c8eab98-c7f1-45da-9b22-9c59c4f64aac",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Load settings and keywords",
+        "height": 280,
+        "width": 480,
+        "color": 7
+      },
+      "id": "cc84a8b4-aec5-482a-a9ce-a9be81d7c97f",
+      "name": "Section load",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Search Google\nOne API.SH call per keyword at your country and depth.",
+        "height": 280,
+        "width": 260,
+        "color": 7
+      },
+      "id": "146497bc-2d33-4434-be20-1f03efafa134",
+      "name": "Section search",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Record positions and alert\nHistory gets one row per keyword per run; drops are emailed in one digest.",
+        "height": 520,
+        "width": 720,
+        "color": 7
+      },
+      "id": "31da52fa-6d27-4898-8bfd-e39c0796c6a1",
+      "name": "Section record",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        780,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "32f5a185-935b-4ea4-9f5f-14bd66a6aec1",
+      "name": "Every Monday",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        40,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ce329b0c-0675-4dc4-b4e5-deb541166f11",
+              "name": "my_domain",
+              "value": "example.com",
+              "type": "string"
+            },
+            {
+              "id": "727fb774-55d2-4df4-aaf8-dd4ad56094be",
+              "name": "country",
+              "value": "us",
+              "type": "string"
+            },
+            {
+              "id": "77d1ab9f-63e7-4809-9720-fd39c165bef7",
+              "name": "results_to_check",
+              "value": 30,
+              "type": "number"
+            },
+            {
+              "id": "ba8ff003-7f6e-4117-8758-7b2965b0f7a1",
+              "name": "alert_drop_positions",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "5ce132ff-b748-4e33-8f20-95ba0ba412b2",
+              "name": "alert_email",
+              "value": "you@example.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8c5362e3-2704-4b52-ac27-c2999da5ffef",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Keywords",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "8aa6d4a0-3ebf-4dd0-aec4-87c37c7c7dc3",
+      "name": "Read keywords",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        360,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "google",
+        "operation": "/google/v1/search",
+        "p_q": "={{ $json.keyword }}",
+        "p_country": "={{ $('Settings').first().json.country }}",
+        "p_limit": "={{ $('Settings').first().json.results_to_check }}",
+        "options": {}
+      },
+      "id": "d062acd2-0889-464c-bf58-0d49b36c448b",
+      "name": "Search Google",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 1,
+      "position": [
+        600,
+        80
+      ],
+      "credentials": {
+        "apishApi": {
+          "id": "",
+          "name": "API.SH API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Finds your domain in each keyword's results and compares with the last run\nconst s = $('Settings').first().json;\nconst domain = String(s.my_domain).toLowerCase().replace(/^https?:\\/\\//, '').replace(/^www\\./, '').replace(/\\/.*$/, '');\nconst rows = $('Read keywords').all();\nconst today = new Date().toISOString().slice(0, 10);\nconst host = (u) => (String(u || '').match(/^https?:\\/\\/([^/?#:]+)/i)?.[1] || '').replace(/^www\\./, '').toLowerCase();\n\nreturn $input.all().map((item, i) => {\n  const row = rows[i].json;\n  const r = item.json;\n  const results = Array.isArray(r.results) ? r.results : [];\n  const mine = results.find((x) => { const h = host(x.url); return h === domain || h.endsWith('.' + domain); });\n  const position = mine ? mine.position : null;\n  const last = Number(row.last_position) || null;\n  const change = position && last ? last - position : null; // positive = moved up\n  return { json: {\n    row_number: row.row_number, keyword: row.keyword, date: today,\n    position: position ?? (r.error ? '' : `not in top ${s.results_to_check}`),\n    url: mine?.url || '', previous_position: last ?? '', change: change ?? '',\n    top_result: results[0] ? host(results[0].url) : '', error: r.error || '',\n    numeric_position: position, lost: !!last && !position && !r.error,\n    dropped: change !== null && change <= -Number(s.alert_drop_positions || 3),\n  } };\n});"
+      },
+      "id": "bee7d45d-ea73-4fcf-9e8f-8bcd9adcebcf",
+      "name": "Find my position",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "History",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ $json.date }}",
+            "keyword": "={{ $json.keyword }}",
+            "position": "={{ $json.position }}",
+            "url": "={{ $json.url }}",
+            "previous_position": "={{ $json.previous_position }}",
+            "change": "={{ $json.change }}",
+            "top_result": "={{ $json.top_result }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "keyword",
+              "displayName": "keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "position",
+              "displayName": "position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "previous_position",
+              "displayName": "previous_position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "change",
+              "displayName": "change",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "top_result",
+              "displayName": "top_result",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b22f85f3-f774-4677-89e4-3eee5759a675",
+      "name": "Log to history",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1080,
+        -100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Keywords",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "last_position": "={{ $json.numeric_position ?? '' }}",
+            "last_url": "={{ $json.url }}",
+            "last_checked": "={{ $json.date }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_position",
+              "displayName": "last_position",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_url",
+              "displayName": "last_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_checked",
+              "displayName": "last_checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "926c43c1-9b7a-43df-9578-2c21253d2915",
+      "name": "Update keyword row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1080,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// One email listing the keywords that dropped or fell out (nothing is sent otherwise)\nconst s = $('Settings').first().json;\nconst bad = $input.all().map((i) => i.json).filter((k) => k.dropped || k.lost);\nif (!bad.length) return [];\nconst lines = bad.map((k) => k.lost\n  ? `- \"${k.keyword}\": fell out of the top ${s.results_to_check} (was #${k.previous_position})`\n  : `- \"${k.keyword}\": #${k.previous_position} -> #${k.position} (${k.change})`);\nreturn [{ json: { subject: `Ranking drops for ${s.my_domain}: ${bad.length} keyword${bad.length > 1 ? 's' : ''}`, body: lines.join('\\n') } }];"
+      },
+      "id": "63a9dcdd-4ab4-4772-9a5a-d295bab40e2b",
+      "name": "Summarize drops",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.alert_email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "ccefb6bb-ceb6-4fb5-a9c6-081ee77b8ba6",
+      "name": "Email ranking drops",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1320,
+        260
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      },
+      "webhookId": "eec55ee8-7cb9-4023-90af-40a87710ed11"
+    }
+  ],
+  "connections": {
+    "Every Monday": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Read keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read keywords": {
+      "main": [
+        [
+          {
+            "node": "Search Google",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Google": {
+      "main": [
+        [
+          {
+            "node": "Find my position",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find my position": {
+      "main": [
+        [
+          {
+            "node": "Log to history",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update keyword row",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Summarize drops",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize drops": {
+      "main": [
+        [
+          {
+            "node": "Email ranking drops",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

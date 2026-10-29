@@ -1,0 +1,427 @@
+{
+  "name": "Track Amazon prices in Google Sheets and email price-drop alerts with API.SH",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Track Amazon prices and get an email when they drop\n\n### How it works\nEvery morning this workflow reads the Amazon products you track from a Google Sheet, fetches each product's current price with the **API.SH** node, and compares it with the price saved on the last run. It writes the new price, the previous price and the change back to the sheet. When a price falls by more than your threshold, or drops under the target price you set for that product, you get one email listing every alert. Products whose lookup fails or that show no price keep their old values, and the sheet's status column says why.\n\n### Setup\n1. Install the verified **API.SH** node (nodes panel → search \"API.SH\") and add your API key from [api.sh](https://api.sh) (1,000 free credits a month; one product lookup is 1 credit).\n2. Make a Google Sheet with a tab named **Products** and these headers: `url`, `title`, `target_price`, `last_price`, `previous_price`, `change_percent`, `availability`, `status`, `last_checked`. Add product URLs (and optional target prices).\n3. Paste the sheet URL into both Google Sheets nodes and connect Google Sheets and Gmail.\n4. In **Settings**, set your email, the drop threshold and the ZIP code prices should be checked for.\n\n### Customization\nChange the schedule, send the digest to Slack instead of Gmail, or add `domain` (e.g. `co.uk`) to the API.SH node for other Amazon marketplaces.",
+        "height": 760,
+        "width": 480
+      },
+      "id": "5de1d561-d08c-4391-9f78-eac750f8d3c8",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        -280
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Load settings and products\nYour alert email, threshold and the products to check.",
+        "height": 300,
+        "width": 500,
+        "color": 7
+      },
+      "id": "537a6fb8-6c30-4650-8b31-209386ecb81b",
+      "name": "Section load",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Fetch current prices\nOne API.SH call per product. A failed lookup continues with an error the next step records.",
+        "height": 300,
+        "width": 280,
+        "color": 7
+      },
+      "id": "7d43a6b0-aac8-44ea-bf1a-a8c70b30387d",
+      "name": "Section fetch",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Compare, save and alert\nWrites every result back to the sheet and emails one digest when something dropped.",
+        "height": 460,
+        "width": 700,
+        "color": 7
+      },
+      "id": "b9e31c3e-b60f-4d03-bb52-58e6eb63fe2f",
+      "name": "Section compare",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        820,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "84b293f8-380b-459f-b334-696bb62eb9c2",
+      "name": "Every morning",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        40,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "27dcc90b-f329-47a4-8f4e-7545a4e374c3",
+              "name": "alert_email",
+              "value": "you@example.com",
+              "type": "string"
+            },
+            {
+              "id": "25c9af36-a5ac-4e3a-b34d-83262489bd07",
+              "name": "drop_alert_percent",
+              "value": 5,
+              "type": "number"
+            },
+            {
+              "id": "cce8f91e-45db-4386-a3e4-e87e01e86cc0",
+              "name": "zip",
+              "value": "10001",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "553a699a-57ce-4fd5-839f-16a233b12995",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Products",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "ab1c82fa-1d56-42d7-8d17-230be892eb04",
+      "name": "Read tracked products",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        360,
+        60
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "amazon",
+        "operation": "/amazon/v1/product",
+        "p_url": "={{ $json.url }}",
+        "p_zip": "={{ $('Settings').first().json.zip }}",
+        "options": {}
+      },
+      "id": "fb261443-36ed-480f-a85f-3ccef2a9a9bb",
+      "name": "Get Amazon product",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 1,
+      "position": [
+        600,
+        60
+      ],
+      "credentials": {
+        "apishApi": {
+          "id": "",
+          "name": "API.SH API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pairs each product row from the sheet with its API.SH result (same order)\n// and works out the price change since the last run.\nconst rows = $('Read tracked products').all();\nconst settings = $('Settings').first().json;\nconst threshold = Number(settings.drop_alert_percent) || 5;\nconst now = new Date().toISOString();\n\nreturn $input.all().map((item, i) => {\n  const row = rows[i]?.json ?? {};\n  const p = item.json;\n  const previous = Number(row.last_price) || null;\n  const target = Number(row.target_price) || null;\n  const price = typeof p.price_value === 'number' ? p.price_value : null;\n\n  // A failed lookup or a hidden price keeps the old values and says why\n  if (p.error || price === null) {\n    return { json: {\n      url: row.url, title: row.title || p.title || '', target_price: row.target_price ?? '',\n      last_price: row.last_price ?? '', previous_price: row.previous_price ?? '', change_percent: '',\n      availability: p.error ? 'lookup failed' : (p.availability || 'no price shown'),\n      last_checked: now, status: p.error ? `error: ${p.error}` : 'no price', alert: false,\n    } };\n  }\n\n  const change = previous ? Math.round(((price - previous) / previous) * 1000) / 10 : null;\n  const dropped = change !== null && change <= -threshold;\n  const belowTarget = target !== null && price <= target && (previous === null || previous > target);\n  return { json: {\n    url: row.url, title: p.title, target_price: row.target_price ?? '',\n    last_price: price, previous_price: previous ?? '', change_percent: change ?? '',\n    availability: p.availability || '', last_checked: now,\n    status: dropped ? 'price drop' : belowTarget ? 'below target' : 'ok',\n    alert: dropped || belowTarget,\n  } };\n});"
+      },
+      "id": "61f6694a-87eb-49f2-92c2-301194a896a7",
+      "name": "Compare with last price",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Products",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $json.url }}",
+            "title": "={{ $json.title }}",
+            "last_price": "={{ $json.last_price }}",
+            "previous_price": "={{ $json.previous_price }}",
+            "change_percent": "={{ $json.change_percent }}",
+            "availability": "={{ $json.availability }}",
+            "status": "={{ $json.status }}",
+            "last_checked": "={{ $json.last_checked }}"
+          },
+          "matchingColumns": [
+            "url"
+          ],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_price",
+              "displayName": "last_price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "previous_price",
+              "displayName": "previous_price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "change_percent",
+              "displayName": "change_percent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "availability",
+              "displayName": "availability",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_checked",
+              "displayName": "last_checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e703cbea-bc14-4e27-81bf-7ebd55ca2a91",
+      "name": "Save latest prices",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1100,
+        -60
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// One email for all alerts of this run (nothing is sent when there are none)\nconst alerts = $input.all().map((i) => i.json).filter((p) => p.alert);\nif (!alerts.length) return [];\nconst lines = alerts.map((p) => {\n  const was = p.previous_price !== '' ? ` (was ${p.previous_price}, ${p.change_percent}%)` : '';\n  const target = p.status === 'below target' ? ` - below your target of ${p.target_price}` : '';\n  return `- ${p.title}\\n  now ${p.last_price}${was}${target}\\n  ${p.url}`;\n});\nreturn [{ json: {\n  subject: `${alerts.length} Amazon price alert${alerts.length > 1 ? 's' : ''}`,\n  body: `Prices checked ${new Date().toUTCString()}:\\n\\n${lines.join('\\n\\n')}`,\n} }];"
+      },
+      "id": "ba035ad0-4eb2-484c-86d6-d14dbfaf7997",
+      "name": "Build alert digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.alert_email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "55ece972-71f0-434e-9fc7-5c569623240d",
+      "name": "Email price alerts",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1340,
+        160
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      },
+      "webhookId": "39362546-3e83-4a55-9a09-524294c91aa4"
+    }
+  ],
+  "connections": {
+    "Every morning": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Read tracked products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read tracked products": {
+      "main": [
+        [
+          {
+            "node": "Get Amazon product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Amazon product": {
+      "main": [
+        [
+          {
+            "node": "Compare with last price",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare with last price": {
+      "main": [
+        [
+          {
+            "node": "Save latest prices",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build alert digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build alert digest": {
+      "main": [
+        [
+          {
+            "node": "Email price alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

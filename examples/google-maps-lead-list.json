@@ -1,0 +1,400 @@
+{
+  "name": "Build a Google Maps lead list in Google Sheets with API.SH",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Build a local business lead list from Google Maps\n\n### How it works\nFill in a short form with a business type, a location, how many result pages to fetch, a minimum rating and whether a website is required. The workflow searches Google Maps with the **API.SH** node (20 places per page), drops closed businesses, duplicates and places below your criteria, then appends the qualified leads to a Google Sheet. The sheet is matched on `place_id`, so running the same search again updates existing leads instead of adding duplicates.\n\n### Setup\n1. Install the verified **API.SH** node (nodes panel → search \"API.SH\") and add your API key from [api.sh](https://api.sh). Each page of 20 places is 1 credit; every account gets 1,000 free credits a month.\n2. Create a Google Sheet with a tab named **Leads** and headers: `place_id`, `name`, `category`, `phone`, `website`, `domain`, `address`, `city`, `rating`, `reviews`, `maps_url`, `search`, `found_at`.\n3. Paste the sheet URL into the Google Sheets node, connect your Google account, activate the workflow and open the form URL.\n\n### Customization\nAdd an enrichment step after the filter (for example a website or email lookup), or replace the form with a schedule and a fixed list of searches.",
+        "height": 760,
+        "width": 480
+      },
+      "id": "206e92fc-7e9b-4e94-89cf-faa62774feb2",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Collect the search\nThe form sets the query, page count and quality bar.",
+        "height": 280,
+        "width": 460,
+        "color": 7
+      },
+      "id": "870c1048-2530-425d-9567-bb72af9ea1a4",
+      "name": "Section form",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Search Google Maps\nOne API.SH call per page; each place becomes its own item.",
+        "height": 280,
+        "width": 260,
+        "color": 7
+      },
+      "id": "4fd10a76-33b7-4378-801f-9ce8a98ee8b0",
+      "name": "Section search",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Qualify and save\nRemoves duplicates and weak matches, then upserts by place_id.",
+        "height": 280,
+        "width": 480,
+        "color": 7
+      },
+      "id": "7896456b-9ec3-4a97-9be4-d02de2d36112",
+      "name": "Section save",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        760,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "Find local business leads",
+        "formDescription": "Search Google Maps and save qualified businesses to your lead sheet.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Business type",
+              "placeholder": "dentist",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Location",
+              "placeholder": "Austin, TX",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Pages to fetch",
+              "fieldType": "number",
+              "placeholder": "1-5 (20 places each)",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Minimum rating",
+              "fieldType": "number",
+              "placeholder": "4.0"
+            },
+            {
+              "fieldLabel": "Website required",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Yes"
+                  },
+                  {
+                    "option": "No"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d8fa934f-207e-407c-9e7a-9ab1aa23a102",
+      "name": "Lead search form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        40,
+        80
+      ],
+      "webhookId": "e250b802-2aeb-4d91-8f87-274d21a78578"
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per results page (20 places each), up to 5 pages\nconst f = $input.first().json;\nconst pages = Math.min(Math.max(parseInt(f['Pages to fetch'], 10) || 1, 1), 5);\nconst query = `${f['Business type']} in ${f['Location']}`.trim();\nreturn Array.from({ length: pages }, (_, i) => ({ json: { query, page: i + 1 } }));"
+      },
+      "id": "22b95a5e-9bed-4f34-ab0f-6b7973b2f498",
+      "name": "Build page list",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "google-maps",
+        "operation": "/google-maps/v1/search",
+        "p_q": "={{ $json.query }}",
+        "p_page": "={{ $json.page }}",
+        "p_limit": 20,
+        "options": {
+          "split": true
+        }
+      },
+      "id": "dc53e32f-77f3-417c-8084-c9778cfcd8eb",
+      "name": "Search Google Maps",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 1,
+      "position": [
+        540,
+        80
+      ],
+      "credentials": {
+        "apishApi": {
+          "id": "",
+          "name": "API.SH API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keeps the places that meet the form's criteria and shapes one sheet row each\nconst f = $('Lead search form').first().json;\nconst minRating = Number(f['Minimum rating']) || 0;\nconst needWebsite = f['Website required'] === 'Yes';\nconst seen = new Set();\nconst out = [];\nfor (const item of $input.all()) {\n  const p = item.json;\n  if (p.error || !p.place_id || seen.has(p.place_id)) continue;\n  seen.add(p.place_id);\n  if (p.permanently_closed) continue;\n  if ((Number(p.stars) || 0) < minRating) continue;\n  if (needWebsite && !p.website) continue;\n  out.push({ json: {\n    place_id: p.place_id, name: p.name, category: p.category || '', phone: p.phone_international || p.phone || '',\n    website: p.website || '', domain: p.website_domain || '', address: p.full_address || p.address || '',\n    city: p.city || '', rating: p.stars ?? '', reviews: p.review_count ?? '', maps_url: p.url || '',\n    search: $('Build page list').first().json.query, found_at: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "id": "ab58a1f2-fd1a-4c09-a0e3-24fbce5e731d",
+      "name": "Keep qualified leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "place_id": "={{ $json.place_id }}",
+            "name": "={{ $json.name }}",
+            "category": "={{ $json.category }}",
+            "phone": "={{ $json.phone }}",
+            "website": "={{ $json.website }}",
+            "domain": "={{ $json.domain }}",
+            "address": "={{ $json.address }}",
+            "city": "={{ $json.city }}",
+            "rating": "={{ $json.rating }}",
+            "reviews": "={{ $json.reviews }}",
+            "maps_url": "={{ $json.maps_url }}",
+            "search": "={{ $json.search }}",
+            "found_at": "={{ $json.found_at }}"
+          },
+          "matchingColumns": [
+            "place_id"
+          ],
+          "schema": [
+            {
+              "id": "place_id",
+              "displayName": "place_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "domain",
+              "displayName": "domain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "city",
+              "displayName": "city",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rating",
+              "displayName": "rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reviews",
+              "displayName": "reviews",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "maps_url",
+              "displayName": "maps_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "search",
+              "displayName": "search",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "found_at",
+              "displayName": "found_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3ec56cdd-26e2-40ce-9d72-bae9bff891b7",
+      "name": "Save leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1060,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Lead search form": {
+      "main": [
+        [
+          {
+            "node": "Build page list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build page list": {
+      "main": [
+        [
+          {
+            "node": "Search Google Maps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Google Maps": {
+      "main": [
+        [
+          {
+            "node": "Keep qualified leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep qualified leads": {
+      "main": [
+        [
+          {
+            "node": "Save leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

@@ -1,6 +1,6 @@
 # n8n-nodes-apish
 
-The [API.SH](https://api.sh) node for [n8n](https://n8n.io): public web data from TikTok, Instagram, YouTube, Amazon, Zillow, Google and 80+ other platforms as clean JSON, inside your workflows. One node, one credential, 500+ endpoints.
+The [API.SH](https://api.sh) node for [n8n](https://n8n.io): public web data from TikTok, Instagram, YouTube, Amazon, Zillow, Google and 150+ other platforms as clean JSON, inside your workflows. One node, one credential, 700+ endpoints.
 
 ## Install
 
@@ -17,8 +17,8 @@ The key is sent in the `x-api-key` header to `https://api.api.sh` only.
 ## Use
 
 1. Add the **API.SH** node.
-2. Pick a **Platform** (e.g. TikTok) and an **Operation** (e.g. *TikTok profile*). Each operation shows its price in credits.
-3. Fill in the operation's fields (e.g. `username`: `nasa`).
+2. Pick a **Platform** (e.g. TikTok) and an **Endpoint** (e.g. *TikTok profile*). Each endpoint shows its current price in credits.
+3. Fill in the endpoint's **Parameters** (e.g. `username`: `nasa`).
 4. Optional **Options**:
    - **Split Into Items:** one n8n item per record (per search result, review, post…) instead of one item per call.
    - **Fields:** return only these fields, e.g. `posts.title,posts.url`.
@@ -28,6 +28,12 @@ The key is sent in the `x-api-key` header to `https://api.api.sh` only.
 The **Account** platform reads your balance and spend, usage per day, recent call logs, and the response of an earlier call again (all free).
 
 Every item carries `_apish.request_id` and `_apish.credits_used`. Failed calls return n8n errors with API.SH's message; turn on *Continue On Fail* to keep going. The node can also be used as a tool by n8n AI agents.
+
+## Always up to date
+
+Since version 0.3.0 (node version 2) the platform and endpoint lists come live from API.SH's public catalog (`GET https://api.api.sh/catalog`, free, no key), and each endpoint's parameters from `/catalog?route=…`, cached for an hour. New platforms, new endpoints and price changes show up without updating the package. If api.api.sh can't be reached while you edit, the node falls back to the list bundled in the package. Running a workflow doesn't read the catalog.
+
+Nodes added before 0.3.0 stay on node version 1 (the bundled list, one field per parameter) and keep running unchanged. To switch one to version 2, add a new API.SH node and pick the same platform and endpoint.
 
 ## Example workflow
 

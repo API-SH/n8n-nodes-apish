@@ -1,0 +1,540 @@
+{
+  "name": "Vet TikTok and Instagram creators from Google Sheets with API.SH",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Vet TikTok and Instagram creators from a Google Sheet\n\n### How it works\nPaste creator handles into a Google Sheet and run the workflow. It cleans each handle (an @name, a plain username or a profile URL all work), looks up the public TikTok and Instagram profiles with the **API.SH** node, and writes back followers, verification, TikTok likes per video, an engagement signal (likes per video ÷ followers), total reach and a size tier (nano to mega). Empty cells are skipped, and private accounts or failed lookups are noted in the `notes` column instead of stopping the run, so you can shortlist creators before reaching out.\n\n### Setup\n1. Install the verified **API.SH** node (nodes panel → search \"API.SH\") and add your API key from [api.sh](https://api.sh). Each profile is 1 credit; every account gets 1,000 free credits a month.\n2. Create a Google Sheet with a tab named **Creators** and headers: `tiktok`, `instagram`, `tiktok_followers`, `tiktok_videos`, `tiktok_likes_per_video`, `tiktok_engagement_percent`, `tiktok_verified`, `instagram_followers`, `instagram_verified`, `instagram_bio`, `total_reach`, `tier`, `notes`, `checked_at`.\n3. Paste the sheet URL into both Google Sheets nodes and connect your Google account.\n\n### Customization\nSwap the manual trigger for a weekly schedule to track growth, or add the API.SH `/tiktok/v1/channel` endpoint to score recent videos instead of lifetime likes.",
+        "height": 780,
+        "width": 480
+      },
+      "id": "44587810-50ee-4180-997f-e8fca227747e",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Read and clean handles\nOne item per non-empty handle.",
+        "height": 420,
+        "width": 480,
+        "color": 7
+      },
+      "id": "c8cd21f1-b170-4674-987f-ca3e3c2b3033",
+      "name": "Section read",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Look up profiles\nTikTok and Instagram handles go to their own API.SH call; errors continue.",
+        "height": 420,
+        "width": 480,
+        "color": 7
+      },
+      "id": "8c948218-7974-4bd5-923b-de5c8d8afbb4",
+      "name": "Section lookup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Score and write back\nGroups results by sheet row and updates it.",
+        "height": 420,
+        "width": 640,
+        "color": 7
+      },
+      "id": "c56b413c-3f62-4e57-9fb5-2eede0434597",
+      "name": "Section score",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        -60
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f90032c0-f0ff-4170-8b8d-7130d350de32",
+      "name": "Run on demand",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Creators",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "6f464be1-0863-4cfa-951b-7b9bea2253c3",
+      "name": "Read creators",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        200,
+        140
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per handle to look up: @handles, plain usernames and profile URLs all work.\n// Empty cells are skipped, so no credits are spent on them.\nconst handle = (v) => String(v || '').trim()\n  .replace(/^https?:\\/\\/(www\\.)?(tiktok|instagram)\\.com\\/@?/i, '')\n  .replace(/[/?#].*$/, '').replace(/^@/, '');\nconst out = [];\nfor (const item of $input.all()) {\n  for (const network of ['tiktok', 'instagram']) {\n    const h = handle(item.json[network]);\n    if (h) out.push({ json: { row_number: item.json.row_number, network, handle: h } });\n  }\n}\nreturn out;"
+      },
+      "id": "3682f916-ad51-4eac-a1cd-3da51c734e3a",
+      "name": "Clean handles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "800ba78c-441d-4676-a40e-a454df02fa1a",
+              "leftValue": "={{ $json.network }}",
+              "rightValue": "tiktok",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e2ba9778-0a50-4d6e-9c58-8d2c7851bcf5",
+      "name": "TikTok handles",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "deda0b1b-92e7-447c-be71-da3335371743",
+              "leftValue": "={{ $json.network }}",
+              "rightValue": "instagram",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7a359365-bfd1-4354-a50f-7db85c5b3b51",
+      "name": "Instagram handles",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "tiktok",
+        "operation": "/tiktok/v1/profile",
+        "p_username": "={{ $json.handle }}",
+        "options": {}
+      },
+      "id": "b82564ad-ee87-406b-a3eb-2d3197df5ab7",
+      "name": "Get TikTok profile",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 1,
+      "position": [
+        780,
+        40
+      ],
+      "credentials": {
+        "apishApi": {
+          "id": "",
+          "name": "API.SH API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "instagram",
+        "operation": "/instagram/v1/user",
+        "p_username": "={{ $json.handle }}",
+        "options": {}
+      },
+      "id": "d2319c8a-edf6-4081-8dd2-56ecb6e98ac0",
+      "name": "Get Instagram profile",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 1,
+      "position": [
+        780,
+        240
+      ],
+      "credentials": {
+        "apishApi": {
+          "id": "",
+          "name": "API.SH API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "709a29f0-57ec-4aac-829e-cca1ff25781c",
+      "name": "Combine results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1040,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Groups both profiles by sheet row: reach, size tier and a simple engagement signal\nconst rows = new Map();\n$input.all().forEach((item, i) => {\n  const src = $('Clean handles').itemMatching(i).json;\n  const row = rows.get(src.row_number) ?? { row_number: src.row_number };\n  row[src.network] = item.json;\n  rows.set(src.row_number, row);\n});\nconst tier = (n) => n >= 1e6 ? 'mega' : n >= 5e5 ? 'macro' : n >= 1e5 ? 'mid' : n >= 1e4 ? 'micro' : n > 0 ? 'nano' : '';\n\nreturn [...rows.values()].map(({ row_number, tiktok: tt = {}, instagram: ig = {} }) => {\n  const ttFollowers = Number(tt.followers) || 0;\n  const igFollowers = Number(ig.followers) || 0;\n  // TikTok likes per video against followers: a rough signal of how engaged the audience is\n  const likesPerVideo = tt.videos ? Math.round(Number(tt.likes || 0) / Number(tt.videos)) : null;\n  const engagement = likesPerVideo !== null && ttFollowers ? Math.round((likesPerVideo / ttFollowers) * 10000) / 100 : '';\n  const notes = [tt.error && `TikTok: ${tt.error}`, ig.error && `Instagram: ${ig.error}`, tt.private && 'TikTok private', ig.is_private && 'Instagram private'].filter(Boolean);\n  return { json: {\n    row_number,\n    tiktok_followers: ttFollowers || '', tiktok_videos: tt.videos ?? '', tiktok_likes_per_video: likesPerVideo ?? '',\n    tiktok_engagement_percent: engagement, tiktok_verified: tt.verified ?? '',\n    instagram_followers: igFollowers || '', instagram_verified: ig.is_verified ?? '', instagram_bio: ig.bio || '',\n    total_reach: ttFollowers + igFollowers, tier: tier(Math.max(ttFollowers, igFollowers)),\n    notes: notes.join('; '), checked_at: new Date().toISOString(),\n  } };\n});"
+      },
+      "id": "742ae7e6-4535-487c-9eda-ba4414d6eb11",
+      "name": "Score creators",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Creators",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "tiktok_followers": "={{ $json.tiktok_followers }}",
+            "tiktok_videos": "={{ $json.tiktok_videos }}",
+            "tiktok_likes_per_video": "={{ $json.tiktok_likes_per_video }}",
+            "tiktok_engagement_percent": "={{ $json.tiktok_engagement_percent }}",
+            "tiktok_verified": "={{ $json.tiktok_verified }}",
+            "instagram_followers": "={{ $json.instagram_followers }}",
+            "instagram_verified": "={{ $json.instagram_verified }}",
+            "instagram_bio": "={{ $json.instagram_bio }}",
+            "total_reach": "={{ $json.total_reach }}",
+            "tier": "={{ $json.tier }}",
+            "notes": "={{ $json.notes }}",
+            "checked_at": "={{ $json.checked_at }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tiktok_followers",
+              "displayName": "tiktok_followers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tiktok_videos",
+              "displayName": "tiktok_videos",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tiktok_likes_per_video",
+              "displayName": "tiktok_likes_per_video",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tiktok_engagement_percent",
+              "displayName": "tiktok_engagement_percent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tiktok_verified",
+              "displayName": "tiktok_verified",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "instagram_followers",
+              "displayName": "instagram_followers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "instagram_verified",
+              "displayName": "instagram_verified",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "instagram_bio",
+              "displayName": "instagram_bio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_reach",
+              "displayName": "total_reach",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tier",
+              "displayName": "tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checked_at",
+              "displayName": "checked_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3dcf08d5-7e3a-47e7-8386-a2f2cbad44d0",
+      "name": "Update creator rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1460,
+        140
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run on demand": {
+      "main": [
+        [
+          {
+            "node": "Read creators",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read creators": {
+      "main": [
+        [
+          {
+            "node": "Clean handles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean handles": {
+      "main": [
+        [
+          {
+            "node": "TikTok handles",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Instagram handles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok handles": {
+      "main": [
+        [
+          {
+            "node": "Get TikTok profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram handles": {
+      "main": [
+        [
+          {
+            "node": "Get Instagram profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get TikTok profile": {
+      "main": [
+        [
+          {
+            "node": "Combine results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Instagram profile": {
+      "main": [
+        [
+          {
+            "node": "Combine results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combine results": {
+      "main": [
+        [
+          {
+            "node": "Score creators",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score creators": {
+      "main": [
+        [
+          {
+            "node": "Update creator rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
