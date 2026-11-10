@@ -1,0 +1,1622 @@
+{
+  "name": "Track brand mentions on Reddit, HN, YouTube and news daily",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Daily brand and competitor mentions from Reddit, Hacker News, YouTube and news\n\n### Who is this for\nFounders, marketing, PR and community teams who need to know what people say about their product and their competitors, without checking four sites every morning.\n\n### What it does\nEvery morning the **API.SH** node searches Reddit, Hacker News, YouTube and Google News for each brand and competitor term. Results are normalised into one shape, loose matches are dropped (the term must appear in the text), and anything seen on an earlier day is skipped. Each new mention gets a keyword tone and a reach score, then an AI label (sentiment, intent, urgency, one-line summary). Mentions are logged to Google Sheets, urgent brand mentions are posted to Slack straight away, and a digest with share of voice, negatives to answer and questions or buying intent goes out by email and Slack.\n\n### Setup\n1. Install the verified **API.SH** node (nodes panel → search \"API.SH\"), create a free account at [api.sh](https://api.sh/integrations/n8n?utm_source=n8n&utm_medium=integration&utm_campaign=template-brand-mentions-reddit-hn-youtube-news) and add your API key as an **API.SH** credential.\n2. Create a Google Sheet with tabs **Mentions** and **Errors** (they can start empty: the workflow writes the headers).\n3. Open **Settings**: your brand terms, competitor terms (comma-separated), lookback days, the sheet URL, Slack channel and digest email.\n4. Connect Google Sheets, Slack, Gmail and OpenAI, then run it once by hand.\n\n### How to customise\n- Remove a source from `sources` in Settings to skip it; add more terms freely (each term searches each source once).\n- The AI step is optional: if it fails or you delete it (connect **Skip mentions seen before** to **Merge AI labels**), the keyword tone is used.\n- Tune the keyword lists in **Score relevance and tone** for your industry, or change what counts as urgent in **Urgent brand mention?**.\n- [OpenAI node docs](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/) · [Remove Duplicates docs](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.removeduplicates/)",
+        "height": 1180,
+        "width": 620
+      },
+      "id": "70180a99-a9f0-48c2-a7a6-3512fa7e48c8",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        -396
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Settings\nTerms, competitors and destinations. Each term x source becomes one search.",
+        "height": 300,
+        "width": 660,
+        "color": 7
+      },
+      "id": "9e86b4c7-7bd0-4750-ad6f-7f19e4f9cf2a",
+      "name": "Section setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Search four sources\nOne API.SH call per term and source, a short pause between calls. Each response is mapped to the same mention fields; a failed call is marked and the loop continues.",
+        "height": 894,
+        "width": 1188,
+        "color": 7
+      },
+      "id": "db058b0e-6c46-412b-afa2-47a064a002af",
+      "name": "Section collect",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        680,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Filter, dedupe and label\nDrops loose matches, skips mentions seen on earlier runs, scores reach and asks the AI for sentiment, intent and urgency.",
+        "height": 300,
+        "width": 1140,
+        "color": 7
+      },
+      "id": "458cd309-604d-46bd-afd5-eda445dd0e06",
+      "name": "Section label",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1976,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Error path\nFailed source calls are logged to the Errors tab and posted once to Slack.",
+        "height": 300,
+        "width": 420,
+        "color": 3
+      },
+      "id": "62a4719a-5afc-4799-a69d-055f0bfe70d8",
+      "name": "Section errors",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2216,
+        246
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. Log, alert and digest\nEvery mention to the Mentions tab, urgent brand mentions to Slack now, the digest by email and Slack.",
+        "height": 960,
+        "width": 420,
+        "color": 7
+      },
+      "id": "415b7c77-bfa2-4596-ad7b-5133f84b8e66",
+      "name": "Section output",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3224,
+        -326
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "aaa810bb-7f27-41e3-a0ee-05d3da57da07",
+      "name": "Every morning at 8",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c6ca0acf-a644-4373-ac76-b874b175ffda",
+              "name": "brand_terms",
+              "value": "YourBrand, yourbrand.com",
+              "type": "string"
+            },
+            {
+              "id": "0525ee2d-03b9-45fc-a5e0-959389bab6c0",
+              "name": "competitor_terms",
+              "value": "CompetitorOne, CompetitorTwo",
+              "type": "string"
+            },
+            {
+              "id": "c7954152-ca27-4d85-aecb-534c46ab33c8",
+              "name": "lookback_days",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "e7bdaef7-3785-4942-af87-04e01a3d0952",
+              "name": "sources",
+              "value": "reddit,hackernews,youtube,news",
+              "type": "string"
+            },
+            {
+              "id": "f882aa76-9a73-4ddc-aba1-09479329d7a0",
+              "name": "sheet_url",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "cd8b60e2-9ab1-4c54-a183-5f3fcd1dd7de",
+              "name": "slack_channel",
+              "value": "#brand-mentions",
+              "type": "string"
+            },
+            {
+              "id": "d1e337d8-7339-4eca-a31d-7ec9603a9b1a",
+              "name": "digest_email",
+              "value": "you@example.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a3e2a5cc-a737-4ca9-aa6c-04b5305e0c3f",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per term and source; the search window follows the lookback in Settings\nconst s = $('Settings').first().json;\nconst list = (v) => String(v || '').split(',').map((t) => t.trim()).filter(Boolean);\nconst terms = [\n  ...list(s.brand_terms).map((term) => ({ term, group: 'brand' })),\n  ...list(s.competitor_terms).map((term) => ({ term, group: 'competitor' })),\n];\nif (!terms.some((t) => t.group === 'brand')) throw new Error('Add at least one brand term in Settings.');\nconst days = Math.min(Math.max(parseInt(s.lookback_days, 10) || 1, 1), 30);\nconst since = new Date(Date.now() - days * 86400000);\nconst window = days <= 1 ? 'day' : days <= 7 ? 'week' : 'month';\nconst sources = String(s.sources || 'reddit,hackernews,youtube,news').split(',').map((x) => x.trim()).filter(Boolean);\nconst out = [];\nfor (const t of terms) {\n  for (const source of sources) {\n    out.push({ json: {\n      ...t,\n      source,\n      q: /\\s/.test(t.term) ? `\"${t.term}\"` : t.term, // exact phrase for multi-word names\n      window,\n      youtube_window: days <= 1 ? 'today' : days <= 7 ? 'week' : 'month',\n      since_date: since.toISOString().slice(0, 10),\n    } });\n  }\n}\nreturn out;"
+      },
+      "id": "3b3493d7-f17a-4078-ac1f-7b5a7ef3d590",
+      "name": "Build source queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "254601e2-9387-40a5-a8ce-0a6e67326927",
+      "name": "Loop over queries",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4ab952f8-4dd5-4075-a1f1-68f53f58143c",
+                    "leftValue": "={{ $json.source === 'reddit' }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reddit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b35753e5-e7a5-4582-a3a5-af18d3cd59a6",
+                    "leftValue": "={{ $json.source === 'hackernews' }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Hacker News"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "347609a8-5a6a-474a-ad2b-83185b3cad30",
+                    "leftValue": "={{ $json.source === 'youtube' }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "YouTube"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "bb34de16-e941-44ba-a302-84632cd0e16d",
+                    "leftValue": "={{ $json.source === 'news' }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "News"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "7e7253ed-7471-4558-a5f1-5149ae7fc750",
+      "name": "Route by source",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        960,
+        330
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "reddit",
+        "operation": "/reddit/v1/search",
+        "parameters": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "q": "={{ $json.q }}",
+            "sort": "new",
+            "time": "={{ $json.window }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "q",
+              "displayName": "Q (e.g. rust programming)",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "sort",
+              "displayName": "Sort (relevance (default), hot, top, new, comments.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "time",
+              "displayName": "Time (Time range: all (default), year, month, week, day, hour.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": false,
+              "options": [
+                {
+                  "name": "all",
+                  "value": "all"
+                },
+                {
+                  "name": "year",
+                  "value": "year"
+                },
+                {
+                  "name": "month",
+                  "value": "month"
+                },
+                {
+                  "name": "week",
+                  "value": "week"
+                },
+                {
+                  "name": "day",
+                  "value": "day"
+                },
+                {
+                  "name": "hour",
+                  "value": "hour"
+                }
+              ]
+            },
+            {
+              "id": "subreddit",
+              "displayName": "Subreddit (Search inside one subreddit.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "engine",
+              "displayName": "Engine (feed (default): 25 posts per page with text and links. web: the results of reddi)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": false,
+              "options": [
+                {
+                  "name": "feed",
+                  "value": "feed"
+                },
+                {
+                  "name": "web",
+                  "value": "web"
+                }
+              ],
+              "removed": true
+            },
+            {
+              "id": "cursor",
+              "displayName": "Cursor (Value of next_cursor from the previous page.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "e10588a5-3497-4e93-a625-eb7c17e1c5dc",
+      "name": "Search Reddit",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        66
+      ],
+      "credentials": {
+        "apishApi": {
+          "name": "API.SH account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "hacker-news",
+        "operation": "/hackernews/v1/search",
+        "parameters": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "query": "={{ $json.q }}",
+            "start": "={{ $json.since_date }}",
+            "limit": 30
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "query",
+              "displayName": "Query (Words to search for in titles, URLs and comment text. Leave empty with filters t)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "tags",
+              "displayName": "Tags (Comma-separated filters, all must match: story, comment, poll, job, ask_hn, show)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "author",
+              "displayName": "Author (Only items by this username.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "story_id",
+              "displayName": "Story Id (Only comments and the story in this story's thread.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "sort",
+              "displayName": "Sort (relevance (default) or date (newest first).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "start",
+              "displayName": "Start (Posted on/after (YYYY-MM-DD).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "end",
+              "displayName": "End (Posted on/before (YYYY-MM-DD).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "min_points",
+              "displayName": "Min Points (Only items with at least this many points.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "min_comments",
+              "displayName": "Min Comments (Only items with at least this many comments.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "page",
+              "displayName": "Page (Page number (default 1).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "limit",
+              "displayName": "Limit (Results per page (default 20, max 100).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "038e1e08-aedf-4412-a8df-c94af4075851",
+      "name": "Search Hacker News",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        242
+      ],
+      "credentials": {
+        "apishApi": {
+          "name": "API.SH account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "youtube",
+        "operation": "/youtube/v1/search",
+        "parameters": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "q": "={{ $json.q }}",
+            "sort": "date",
+            "type": "video",
+            "upload_date": "={{ $json.youtube_window }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "q",
+              "displayName": "Q (e.g. lofi)",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "sort",
+              "displayName": "Sort (relevance (default), rating, date or views.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": false,
+              "options": [
+                {
+                  "name": "relevance",
+                  "value": "relevance"
+                },
+                {
+                  "name": "rating",
+                  "value": "rating"
+                },
+                {
+                  "name": "date",
+                  "value": "date"
+                },
+                {
+                  "name": "views",
+                  "value": "views"
+                }
+              ]
+            },
+            {
+              "id": "type",
+              "displayName": "Type (video, channel, playlist or movie. Channels come back under channels, playlists )",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": false,
+              "options": [
+                {
+                  "name": "video",
+                  "value": "video"
+                },
+                {
+                  "name": "channel",
+                  "value": "channel"
+                },
+                {
+                  "name": "playlist",
+                  "value": "playlist"
+                },
+                {
+                  "name": "movie",
+                  "value": "movie"
+                }
+              ]
+            },
+            {
+              "id": "duration",
+              "displayName": "Duration (short (under 4 min), medium (4-20 min) or long (over 20 min).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": false,
+              "options": [
+                {
+                  "name": "short",
+                  "value": "short"
+                },
+                {
+                  "name": "medium",
+                  "value": "medium"
+                },
+                {
+                  "name": "long",
+                  "value": "long"
+                }
+              ],
+              "removed": true
+            },
+            {
+              "id": "upload_date",
+              "displayName": "Upload Date (hour, today, week, month or year.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": false,
+              "options": [
+                {
+                  "name": "hour",
+                  "value": "hour"
+                },
+                {
+                  "name": "today",
+                  "value": "today"
+                },
+                {
+                  "name": "week",
+                  "value": "week"
+                },
+                {
+                  "name": "month",
+                  "value": "month"
+                },
+                {
+                  "name": "year",
+                  "value": "year"
+                }
+              ]
+            },
+            {
+              "id": "features",
+              "displayName": "Features (Comma-separated: hd, subtitles, creative_commons, 3d, live, purchased, 4k, 360, )",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "hl",
+              "displayName": "Hl (Interface language of the results (ISO 639-1), default en.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "gl",
+              "displayName": "Gl (Country of the results (ISO 3166-1 alpha-2), default US.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "cursor",
+              "displayName": "Cursor (Cursor from next_cursor on the previous response; next_cursor is null on the las)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "b99436b7-7d8d-40aa-ae10-baa2a6949477",
+      "name": "Search YouTube",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        418
+      ],
+      "credentials": {
+        "apishApi": {
+          "name": "API.SH account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "google",
+        "operation": "/google/v1/news",
+        "parameters": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "q": "={{ $json.q }}",
+            "time": "={{ $json.window }}",
+            "limit": 20
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "q",
+              "displayName": "Q (Search terms.)",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "time",
+              "displayName": "Time (hour, day, week, month, year (or e.g. day_3).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "date_from",
+              "displayName": "Date From (From date, YYYY-MM-DD.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "date_to",
+              "displayName": "Date To (To date, YYYY-MM-DD.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "sort",
+              "displayName": "Sort (date for newest first (default relevance).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": false,
+              "options": [
+                {
+                  "name": "date",
+                  "value": "date"
+                }
+              ],
+              "removed": true
+            },
+            {
+              "id": "source",
+              "displayName": "Source (Only this publisher (as Google names it).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "country",
+              "displayName": "Country (Country code (gl), default us.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "language",
+              "displayName": "Language (Language (hl), default en.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "page",
+              "displayName": "Page (Page number.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "limit",
+              "displayName": "Limit (Results wanted.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "2c05b6ed-afec-49e8-a9e3-2f7bf060eaac",
+      "name": "Search Google News",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        594
+      ],
+      "credentials": {
+        "apishApi": {
+          "name": "API.SH account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turns one source's response into mention rows with the same fields\nconst ctx = $('Loop over queries').first().json;\nconst r = $input.first().json;\nconst out = [];\nconst add = (m) => out.push({ json: {\n  mention_id: `${ctx.source}:${m.id || m.url}`,\n  source: ctx.source,\n  term: ctx.term,\n  group: ctx.group,\n  title: String(m.title || '').trim(),\n  text: String(m.text || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 1200),\n  url: m.url || '',\n  author: m.author || '',\n  where: m.where || '',\n  published: m.published || '',\n  engagement: Number(m.engagement) || 0,\n} });\nif (ctx.source === 'reddit') {\n  for (const p of r.posts || []) add({ id: p.id, title: p.title, text: p.text, url: p.url, author: p.author, where: p.subreddit ? `r/${p.subreddit}` : 'Reddit', published: p.published, engagement: (Number(p.score) || 0) + 2 * (Number(p.comment_count) || 0) });\n}\nif (ctx.source === 'hackernews') {\n  for (const h of r.items || []) add({ id: h.id, title: h.title || h.story_title, text: h.text, url: h.hn_url || h.url, author: h.author, where: h.type === 'comment' ? 'HN comment' : 'HN story', published: h.created_at, engagement: (Number(h.points) || 0) + 2 * (Number(h.comments) || 0) });\n}\nif (ctx.source === 'youtube') {\n  for (const v of r.videos || []) add({ id: v.id, title: v.title, text: v.description_snippet, url: v.url, author: v.channel, where: 'YouTube', published: v.published, engagement: Math.round((Number(v.view_count) || 0) / 100) });\n}\nif (ctx.source === 'news') {\n  for (const n of r.results || []) add({ id: n.url || n.google_link, title: n.title, text: n.text, url: n.url || n.google_link, author: n.source, where: n.source || 'News', published: n.date, engagement: 0 });\n}\n// always hand one item back to the loop, even when a source found nothing\nreturn out.length ? out : [{ json: { _empty: true, source: ctx.source, term: ctx.term } }];"
+      },
+      "id": "e1c69c6a-f276-469f-a91c-38f0e75f24e4",
+      "name": "Normalise mentions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// A failed call becomes one marked item, so the loop carries on and the error is logged at the end\nconst ctx = $('Loop over queries').first().json;\nconst err = $input.first().json.error || 'unknown error';\nreturn [{ json: { _failed: true, source: ctx.source, term: ctx.term, error: String(err).slice(0, 300), at: new Date().toISOString() } }];"
+      },
+      "id": "c34c1d04-e423-4770-a6f4-a0e9d159197c",
+      "name": "Tag failed source",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
+      "id": "10674e7e-a1ff-4bdb-a65b-0222d1818a7d",
+      "name": "Pause between calls",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1728,
+        330
+      ],
+      "webhookId": "449aa3d3-cd0c-4681-ad02-f2ff11b2c544"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bebe47b4-eeda-44fc-af22-ec8a985aba04",
+              "leftValue": "={{ $json._failed === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "a3f9bb1c-f332-4b82-a38a-fe4abe43eccd",
+      "name": "Failed call?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2016,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Errors",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "id": "f8bceb38-f79b-4d5f-a5ce-e30f34da06e6",
+      "name": "Log failed calls",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2256,
+        396
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.slack_channel }}",
+          "mode": "name"
+        },
+        "text": "=:warning: Brand monitor: {{ $('Failed call?').all(0).length }} source call(s) failed today. First error ({{ $json.source }}, \"{{ $json.term }}\"): {{ $json.error }}. Details are in the Errors tab.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "ff2bebb8-ff73-432d-a4ff-579682d0d56c",
+      "name": "Alert failed calls",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2496,
+        396
+      ],
+      "executeOnce": true,
+      "webhookId": "0b6c2df5-d1ee-46d0-a78b-fe90e8224603",
+      "credentials": {
+        "slackApi": {
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keeps real mentions only, removes duplicates within this run, adds a keyword tone and a reach score\nconst positive = ['love', 'great', 'awesome', 'amazing', 'excellent', 'recommend', 'best', 'easy', 'helpful', 'impressed', 'fantastic', 'reliable', 'worth it', 'switched to', 'game changer'];\nconst negative = ['hate', 'terrible', 'awful', 'worst', 'broken', 'bug', 'slow', 'scam', 'refund', 'cancel', 'outage', 'down again', 'problem', 'issue', 'disappointed', 'too expensive', 'not working', \"doesn't work\", 'switched from', 'alternative to', 'avoid'];\nconst escape = (t) => t.toLowerCase().replace(/[.*+?^$()|[\\]\\\\{}]/g, '\\\\$&');\nconst seen = new Set();\nconst out = [];\nfor (const { json: m } of $input.all()) {\n  if (m._empty || !m.mention_id || seen.has(m.mention_id)) continue;\n  seen.add(m.mention_id);\n  const hay = `${m.title} ${m.text}`.toLowerCase();\n  // search engines match loosely (stems, related words): keep items that contain the term itself\n  if (!new RegExp(`(^|[^a-z0-9])${escape(m.term)}([^a-z0-9]|$)`).test(hay)) continue;\n  const pos = positive.filter((w) => hay.includes(w)).length;\n  const neg = negative.filter((w) => hay.includes(w)).length;\n  const reach = Math.min(100, Math.round(Math.log10(m.engagement + 1) * 25) + (m.source === 'news' ? 30 : 0));\n  out.push({ json: { ...m, keyword_tone: neg > pos ? 'negative' : pos > neg ? 'positive' : 'neutral', reach } });\n}\nreturn out;"
+      },
+      "id": "5e5bc4e8-301f-4f1a-a08a-b38ebdad3066",
+      "name": "Score relevance and tone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2256,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "dedupeValue": "={{ $json.mention_id }}",
+        "options": {}
+      },
+      "id": "46eed102-74d1-4afe-a243-f497ac0c4b07",
+      "name": "Skip mentions seen before",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        2496,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "response",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You label public mentions for a brand monitoring team. Judge the mention from the point of view of the company that owns the term (a brand or a competitor). Be strict: neutral unless the text clearly praises or criticises. Urgency 2-3 only for complaints, outages, security or legal issues, or posts likely to spread."
+            },
+            {
+              "content": "=Term: {{ $json.term }} ({{ $json.group }})\nSource: {{ $json.source }} {{ $json.where }}\nTitle: {{ $json.title }}\nText: {{ $json.text }}"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "textFormat": {
+            "textOptions": [
+              {
+                "type": "json_schema",
+                "name": "mention_label",
+                "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"sentiment\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"positive\",\n        \"neutral\",\n        \"negative\"\n      ]\n    },\n    \"intent\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"complaint\",\n        \"praise\",\n        \"question\",\n        \"feature_request\",\n        \"comparison\",\n        \"buying_intent\",\n        \"news\",\n        \"other\"\n      ]\n    },\n    \"urgency\": {\n      \"type\": \"integer\",\n      \"description\": \"0 = no action, 1 = worth a look, 2 = reply today, 3 = reply now (outage, legal, viral complaint)\"\n    },\n    \"summary\": {\n      \"type\": \"string\",\n      \"description\": \"One sentence, max 25 words\"\n    }\n  },\n  \"required\": [\n    \"sentiment\",\n    \"intent\",\n    \"urgency\",\n    \"summary\"\n  ],\n  \"additionalProperties\": false\n}",
+                "strict": true
+              }
+            ]
+          }
+        }
+      },
+      "id": "f5c0f3c1-3f8b-485b-a8ea-8c3e7a3db878",
+      "name": "Classify with AI",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        2736,
+        0
+      ],
+      "credentials": {
+        "openAiApi": {
+          "name": "OpenAI account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combines each mention with its AI label; falls back to the keyword tone when the AI step fails or is removed\nconst base = $('Skip mentions seen before').all();\nconst now = new Date().toISOString();\nreturn $input.all().map((item, i) => {\n  const m = base[i] ? base[i].json : item.json;\n  let ai = null;\n  try {\n    const t = item.json.output && item.json.output[0] && item.json.output[0].content && item.json.output[0].content[0].text;\n    ai = typeof t === 'string' ? JSON.parse(t) : (t || null);\n  } catch (e) { ai = null; }\n  const sentiment = (ai && ai.sentiment) || m.keyword_tone;\n  const urgency = ai && Number.isFinite(Number(ai.urgency)) ? Number(ai.urgency) : (m.keyword_tone === 'negative' && m.reach >= 50 ? 2 : 0);\n  return { json: {\n    found_at: now, group: m.group, term: m.term, source: m.source, where: m.where,\n    title: m.title || String(m.text || '').slice(0, 120), url: m.url, author: m.author, published: m.published,\n    sentiment, intent: (ai && ai.intent) || 'other', urgency,\n    summary: (ai && ai.summary) || String(m.text || m.title || '').slice(0, 200),\n    reach: m.reach, labelled_by: ai ? 'ai' : 'keywords', mention_id: m.mention_id,\n  } };\n});"
+      },
+      "id": "f6f9d71c-d9f5-4b67-aa8b-91dc11675f01",
+      "name": "Merge AI labels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2976,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Mentions",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "id": "dfaca34d-fd28-4dad-a65b-ac8c5ce7ee9c",
+      "name": "Log mentions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3264,
+        -176
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "355c19a9-d74a-461f-a42b-3f97ad9151e7",
+              "leftValue": "={{ $json.group === 'brand' && $json.urgency >= 2 }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "7b23e1d8-3abe-4801-a3ee-23fdbea48ef2",
+      "name": "Urgent brand mention?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3264,
+        44
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.slack_channel }}",
+          "mode": "name"
+        },
+        "text": "=:rotating_light: *Urgent mention of {{ $json.term }}* ({{ $json.source }} · {{ $json.where }}, {{ $json.sentiment }}, {{ $json.intent }})\n<{{ $json.url }}|{{ $json.title }}>\n{{ $json.summary }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "4e50c4d9-782a-4a8b-a697-410e608241e0",
+      "name": "Alert urgent mention",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        3504,
+        44
+      ],
+      "webhookId": "d6d57c01-75eb-4f16-a6f3-f2f4af49f208",
+      "credentials": {
+        "slackApi": {
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Share of voice, sentiment per group and source, and the mentions worth reading\nconst rows = $input.all().map((i) => i.json);\nconst esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst count = (f) => rows.reduce((acc, r) => { const k = f(r); acc[k] = (acc[k] || 0) + 1; return acc; }, {});\nconst byGroup = count((r) => r.group);\nconst byTerm = count((r) => `${r.group}: ${r.term}`);\nconst bySource = count((r) => r.source);\nconst brand = rows.filter((r) => r.group === 'brand');\nconst tone = (list) => ({ pos: list.filter((r) => r.sentiment === 'positive').length, neg: list.filter((r) => r.sentiment === 'negative').length });\nconst bt = tone(brand);\nconst sov = rows.length ? Math.round(((byGroup.brand || 0) / rows.length) * 100) : 0;\nconst pick = (list, n) => [...list].sort((a, b) => (b.urgency - a.urgency) || (b.reach - a.reach)).slice(0, n);\nconst negatives = pick(brand.filter((r) => r.sentiment === 'negative'), 10);\nconst questions = pick(brand.filter((r) => ['question', 'buying_intent', 'feature_request'].includes(r.intent)), 10);\nconst top = pick(rows, 15);\nconst li = (r) => `<li>[${esc(r.source)}${r.where ? ` · ${esc(r.where)}` : ''}] <a href=\"${esc(r.url)}\">${esc(r.title)}</a> <i>${esc(r.sentiment)}, ${esc(r.intent)}</i><br>${esc(r.summary)}</li>`;\nconst failed = $('Failed call?').all(0).length;\nconst html = `<h2>Brand mentions digest</h2>\n<p><b>${rows.length}</b> new mentions. Your brand: <b>${byGroup.brand || 0}</b> (${bt.pos} positive, ${bt.neg} negative). Competitors: <b>${byGroup.competitor || 0}</b>. Share of voice: <b>${sov}%</b>.${failed ? ` ${failed} source call(s) failed (see the Errors tab).` : ''}</p>\n<p>By term: ${Object.entries(byTerm).map(([k, v]) => `${esc(k)} ${v}`).join(' · ')}<br>By source: ${Object.entries(bySource).map(([k, v]) => `${esc(k)} ${v}`).join(' · ')}</p>\n<h3>Negative mentions of your brand</h3><ul>${negatives.map(li).join('') || '<li>None</li>'}</ul>\n<h3>Questions, requests and buying intent</h3><ul>${questions.map(li).join('') || '<li>None</li>'}</ul>\n<h3>Highest reach</h3><ul>${top.map(li).join('')}</ul>`;\nconst slack = `*Brand mentions today:* ${rows.length} new · brand ${byGroup.brand || 0} (:large_green_circle: ${bt.pos} / :red_circle: ${bt.neg}) · competitors ${byGroup.competitor || 0} · share of voice ${sov}%\\n`\n  + pick(brand, 5).map((r) => `• <${r.url}|${String(r.title).slice(0, 90)}> (${r.source}, ${r.sentiment})`).join('\\n');\nreturn [{ json: { subject: `Brand mentions: ${byGroup.brand || 0} brand, ${byGroup.competitor || 0} competitor`, html, slack } }];"
+      },
+      "id": "20a03a40-5e25-470d-a3e4-92efa884db8c",
+      "name": "Build daily digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3264,
+        264
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.digest_email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "ffc614b9-f65b-488a-a41e-37c439fbe1ac",
+      "name": "Email digest",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3504,
+        264
+      ],
+      "webhookId": "8c86f5c3-d968-4953-a07d-967c57b388f4",
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.slack_channel }}",
+          "mode": "name"
+        },
+        "text": "={{ $json.slack }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "bc7b6848-7c38-4bd3-a75a-a37d110d2b61",
+      "name": "Post digest summary",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        3504,
+        484
+      ],
+      "webhookId": "1cd477a8-30aa-45c5-a67b-bf6d6f83a39e",
+      "credentials": {
+        "slackApi": {
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every morning at 8": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Build source queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build source queries": {
+      "main": [
+        [
+          {
+            "node": "Loop over queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop over queries": {
+      "main": [
+        [
+          {
+            "node": "Failed call?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by source": {
+      "main": [
+        [
+          {
+            "node": "Search Reddit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Hacker News",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search YouTube",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Google News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Reddit": {
+      "main": [
+        [
+          {
+            "node": "Normalise mentions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag failed source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Hacker News": {
+      "main": [
+        [
+          {
+            "node": "Normalise mentions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag failed source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search YouTube": {
+      "main": [
+        [
+          {
+            "node": "Normalise mentions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag failed source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Google News": {
+      "main": [
+        [
+          {
+            "node": "Normalise mentions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag failed source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise mentions": {
+      "main": [
+        [
+          {
+            "node": "Pause between calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag failed source": {
+      "main": [
+        [
+          {
+            "node": "Pause between calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pause between calls": {
+      "main": [
+        [
+          {
+            "node": "Loop over queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failed call?": {
+      "main": [
+        [
+          {
+            "node": "Log failed calls",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Score relevance and tone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log failed calls": {
+      "main": [
+        [
+          {
+            "node": "Alert failed calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score relevance and tone": {
+      "main": [
+        [
+          {
+            "node": "Skip mentions seen before",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip mentions seen before": {
+      "main": [
+        [
+          {
+            "node": "Classify with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify with AI": {
+      "main": [
+        [
+          {
+            "node": "Merge AI labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge AI labels": {
+      "main": [
+        [
+          {
+            "node": "Log mentions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Urgent brand mention?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build daily digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Urgent brand mention?": {
+      "main": [
+        [
+          {
+            "node": "Alert urgent mention",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build daily digest": {
+      "main": [
+        [
+          {
+            "node": "Email digest",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post digest summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

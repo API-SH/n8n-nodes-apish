@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeProperties, INodePropertyOptions } from "n8n-workflow";
 
 export const API_BASE = "https://api.api.sh";
-export const USER_AGENT = "n8n-nodes-apish/0.3.0";
+export const USER_AGENT = "n8n-nodes-apish/0.4.0";
 
 export const ACCOUNT_OPS: INodePropertyOptions[] = [
   { name: "Get Balance and Spend", value: "/v1/account", description: "Credits, plan, spend today / this month, spend limits (free)", action: "Get balance and spend" },

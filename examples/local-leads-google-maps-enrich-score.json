@@ -1,0 +1,1305 @@
+{
+  "name": "Score and enrich local leads from Google Maps with API.SH",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Find, enrich and score local leads from Google Maps\n\n### Who is this for\nAgencies, SaaS sales teams and freelancers who sell to local businesses (dentists, gyms, roofers, restaurants…) and want a fresh, qualified list every week instead of copying Google Maps by hand.\n\n### What it does\nEvery Monday it runs each search in your **Searches** tab (for example *dentist* in *Austin, TX*) on Google Maps with the **API.SH** node, keeps open businesses that meet your rating and review bar, and skips anyone already in your **Leads** tab. For each new business with a website it looks up the emails, phone numbers and social profiles published on that site, scores the lead out of 100 and saves it. Hot leads go to Slack for outreach, and you get an email digest of the run. Failed searches are logged to an **Errors** tab and posted to Slack, and the run carries on.\n\n### Setup\n1. Install the verified **API.SH** node (nodes panel → search \"API.SH\"), create a free account at [api.sh](https://api.sh/integrations/n8n?utm_source=n8n&utm_medium=integration&utm_campaign=template-local-leads-google-maps-enrich-score) and add your API key as an **API.SH** credential.\n2. Create a Google Sheet with three tabs: **Searches** (headers `query`, `city`, `active`), **Leads** and **Errors** (both can start empty: the workflow writes the headers).\n3. Open **Settings**: paste the sheet URL, your Slack channel and the digest email, and adjust the quality bar.\n4. Connect Google Sheets, Slack and Gmail, then run it once by hand to check the output.\n\n### How to customise\n- Change the scoring weights in **Score leads** (for example, favour businesses *without* online booking if you sell booking software).\n- Raise `pages_per_search` for dense cities; lower `max_new_leads_per_run` to control spend.\n- Swap **Post hot leads** for your CRM node (HubSpot, Pipedrive) to create contacts directly.",
+        "height": 1120,
+        "width": 620
+      },
+      "id": "3ec1949f-0255-474f-a397-7b693a89f3b7",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        -352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Settings and searches\nEdit **Settings** once. Each active row of the Searches tab becomes one search per results page.",
+        "height": 300,
+        "width": 900,
+        "color": 7
+      },
+      "id": "e8e6064a-75e2-4213-a7f7-192d413d2ffb",
+      "name": "Section setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Search Google Maps\nOne API.SH call per results page, a short pause between calls. A failed page is marked and the loop continues.",
+        "height": 652,
+        "width": 900,
+        "color": 7
+      },
+      "id": "d0df23b5-47a5-4446-a331-60b8694176f9",
+      "name": "Section search",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        920,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Qualify and dedupe\nKeeps open places above your rating and review bar, then removes businesses already in the Leads tab (by place and website).",
+        "height": 300,
+        "width": 900,
+        "color": 7
+      },
+      "id": "c6719fa7-d838-413a-a049-4056897ac118",
+      "name": "Section qualify",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1928,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Error path\nFailed search pages are written to the Errors tab and posted once to Slack.",
+        "height": 300,
+        "width": 420,
+        "color": 3
+      },
+      "id": "1c8135f5-9149-4e8f-a363-0096d5943a68",
+      "name": "Section errors",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2168,
+        290
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. Enrich from the website\nFor leads with a website, API.SH reads the site for emails, phones and social profiles. Own-domain and named addresses rank first.",
+        "height": 520,
+        "width": 1140,
+        "color": 7
+      },
+      "id": "c1bbcdc7-16da-4b08-aff6-aa24ed834c93",
+      "name": "Section enrich",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2936,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 5. Score, save and hand off\nScore out of 100 with reasons, append to the Leads tab, post hot leads to Slack and email the digest.",
+        "height": 564,
+        "width": 900,
+        "color": 7
+      },
+      "id": "ce642615-aa7b-4766-ade0-580b06163d82",
+      "name": "Section score",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4184,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "47d7e6eb-1acc-4d0d-a3dc-bb11f9d442a5",
+      "name": "Every Monday at 7",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6fe92428-3c0b-418f-ab00-097d97a7db7f",
+              "name": "sheet_url",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "58276bd7-a9ca-4ced-a799-995066e2db4c",
+              "name": "pages_per_search",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "8caa31d6-93da-4aea-ae66-95cd73932308",
+              "name": "min_rating",
+              "value": 4,
+              "type": "number"
+            },
+            {
+              "id": "db35778b-a115-4085-aa3c-5c5074852463",
+              "name": "min_reviews",
+              "value": 10,
+              "type": "number"
+            },
+            {
+              "id": "30da045e-bdce-4215-a565-864f39679876",
+              "name": "max_new_leads_per_run",
+              "value": 50,
+              "type": "number"
+            },
+            {
+              "id": "c1131b64-ebb9-4ad2-a930-215f4dbb1fd7",
+              "name": "hot_score",
+              "value": 70,
+              "type": "number"
+            },
+            {
+              "id": "d3967687-2a6b-4bb5-a2ae-0982b42db055",
+              "name": "warm_score",
+              "value": 45,
+              "type": "number"
+            },
+            {
+              "id": "0f2cc786-19df-46c8-a6b0-75468409f5fd",
+              "name": "skip_known_domains",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "02084aee-f00b-4e6c-a161-b5e1691c5cec",
+              "name": "slack_channel",
+              "value": "#sales-leads",
+              "type": "string"
+            },
+            {
+              "id": "ed8df6ea-a860-4449-a89a-eaa415ec2dfd",
+              "name": "digest_email",
+              "value": "you@example.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "df18a24b-3ec5-4573-a36f-4b49a41f12ff",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Searches",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "74d6d5a6-5ca4-42a6-a621-82d3f2f8d91b",
+      "name": "Read searches",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per Google Maps results page: every active row of the Searches tab x the pages to fetch\nconst s = $('Settings').first().json;\nconst pages = Math.min(Math.max(parseInt(s.pages_per_search, 10) || 1, 1), 5);\nconst out = [];\nfor (const { json: r } of $input.all()) {\n  const query = String(r.query || '').trim();\n  const city = String(r.city || '').trim();\n  if (!query || !city) continue;\n  if (/^(no|false|0|paused)$/i.test(String(r.active ?? '').trim())) continue;\n  for (let page = 1; page <= pages; page++) {\n    out.push({ json: { search: `${query} in ${city}`, query, city, page } });\n  }\n}\nif (!out.length) throw new Error('No active searches. Add rows with a query and a city to the Searches tab.');\nreturn out;"
+      },
+      "id": "a94c645d-ae31-4a3c-a283-78aa3cf372c4",
+      "name": "Build search pages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "6b5ae477-ba9f-4343-afd8-f6ce7905cfe4",
+      "name": "Loop over searches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "google-maps",
+        "operation": "/google-maps/v1/search",
+        "parameters": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "q": "={{ $json.search }}",
+            "page": "={{ $json.page }}",
+            "limit": 20
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "q",
+              "displayName": "Q (e.g. coffee near times square)",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "lat",
+              "displayName": "Lat (Centre the search on this point (with lng), like the map viewport.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "lng",
+              "displayName": "Lng (Longitude of the centre point.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "zoom",
+              "displayName": "Zoom (With lat/lng, the map zoom 3-21 (default 14); lower is a wider area.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "page",
+              "displayName": "Page (Page number. Pass next_page from the previous response; next_page is null on the)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "limit",
+              "displayName": "Limit (Places to return (default 20, max 200; each 20 is one more page).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "bbox",
+              "displayName": "Bbox (Search inside a bounding box: south,west,north,east (degrees). Results outside t)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "ne",
+              "displayName": "Ne (With sw, the box's north-east corner lat,lng (instead of bbox).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "sw",
+              "displayName": "Sw (With ne, the box's south-west corner lat,lng.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "radius",
+              "displayName": "Radius (With lat/lng: only places within this many metres (10-100000); sets the zoom to )",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "query",
+              "displayName": "Query (Same as q.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "subtypes",
+              "displayName": "Subtypes (Keep only businesses with one of these categories (comma-separated, as in subtyp)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "verified",
+              "displayName": "Verified (true: only businesses claimed by their owner; false: only unclaimed ones.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "business_status",
+              "displayName": "Business Status (Keep only these statuses (comma-separated): OPEN, CLOSED_TEMPORARILY, CLOSED.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "extract_emails_and_contacts",
+              "displayName": "Extract Emails And Contacts (true: also read the business website (home page and its contact page) for emails)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "language",
+              "displayName": "Language (Language (same as hl, default en).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "region",
+              "displayName": "Region (Country (same as gl, default us).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "min_rating",
+              "displayName": "Min Rating (Only places rated at least this (1-5, e.g. 4.5).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "open_now",
+              "displayName": "Open Now (true: only places open now.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": false,
+              "options": [
+                {
+                  "name": "true",
+                  "value": "true"
+                },
+                {
+                  "name": "false",
+                  "value": "false"
+                }
+              ],
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "split": true
+        }
+      },
+      "id": "500f8554-b839-4b64-a892-f03e73fc3706",
+      "name": "Search Google Maps",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        220
+      ],
+      "credentials": {
+        "apishApi": {
+          "name": "API.SH account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Remembers which search each place came from (the loop handles one search page at a time)\nconst ctx = $('Loop over searches').first().json;\nreturn $input.all().map((item) => ({ json: { ...item.json, _search: ctx.search, _city: ctx.city } }));"
+      },
+      "id": "70a6ee56-28e1-471f-a0b3-9f55384c02e0",
+      "name": "Tag places with search",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        132
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// A failed page becomes one marked item, so the loop carries on and the error is logged at the end\nconst ctx = $('Loop over searches').first().json;\nconst err = $input.first().json.error || 'unknown error';\nreturn [{ json: { _failed: true, step: 'google-maps search', search: ctx.search, page: ctx.page, error: String(err).slice(0, 300), at: new Date().toISOString() } }];"
+      },
+      "id": "cef4da97-9fb7-406d-a9f5-0e609682fe0d",
+      "name": "Note failed search",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "330a4c5e-8238-4527-a27c-7cff65db0f29",
+      "name": "Pause between searches",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1680,
+        220
+      ],
+      "webhookId": "1b545ab2-382f-4ade-a890-a5cb56fca5c4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ec043cb7-2a8b-4444-a789-1f13712dd13e",
+              "leftValue": "={{ $json._failed === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "daa0faf5-80b8-4df3-ace0-6b41f8180a6e",
+      "name": "Failed search?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1968,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Errors",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "id": "84cfe324-592c-41e8-adb2-e47be03ccc3c",
+      "name": "Log failed searches",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2208,
+        440
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.slack_channel }}",
+          "mode": "name"
+        },
+        "text": "=:warning: Lead finder: {{ $('Failed search?').all(0).length }} Google Maps search page(s) failed this run. First error: {{ $json.error }} (search: {{ $json.search }}). Details are in the Errors tab.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "53a770cb-004d-460d-a4fa-e175993a3794",
+      "name": "Alert failed searches",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2448,
+        440
+      ],
+      "executeOnce": true,
+      "webhookId": "07e38559-3c31-40da-a7ad-547bbdec81fa",
+      "credentials": {
+        "slackApi": {
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keeps open places that meet the rating and review bar, one item per unique place\nconst s = $('Settings').first().json;\nconst minRating = Number(s.min_rating) || 0;\nconst minReviews = Number(s.min_reviews) || 0;\nconst seen = new Set();\nconst out = [];\nfor (const { json: p } of $input.all()) {\n  if (!p.place_id || seen.has(p.place_id)) continue; // empty result pages carry no place_id\n  seen.add(p.place_id);\n  if (p.permanently_closed) continue;\n  if (p.business_status && p.business_status !== 'OPEN') continue;\n  const rating = Number(p.stars ?? p.rating) || 0;\n  const reviews = Number(p.review_count) || 0;\n  if (rating < minRating || reviews < minReviews) continue;\n  out.push({ json: {\n    place_id: p.place_id,\n    name: p.name || '',\n    category: p.category || p.type || '',\n    city: p.city || p._city || '',\n    state: p.state || '',\n    address: p.full_address || p.address || '',\n    phone: p.phone_international || p.phone || '',\n    website: p.website || '',\n    domain: String(p.website_domain || '').toLowerCase().replace(/^www\\./, ''),\n    rating,\n    reviews,\n    verified: p.verified === true,\n    has_booking: Boolean(p.booking_link || p.reservations_link || p.order_link),\n    maps_url: p.url || p.place_link || '',\n    search: p._search || '',\n  } });\n}\nreturn out;"
+      },
+      "id": "34e81ce2-b036-4832-a0d6-e15bf296cb17",
+      "name": "Clean and pre-qualify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "7fd83d1e-f196-4808-af6c-a96f760e63b1",
+      "name": "Read existing leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2448,
+        0
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dedupe against the Leads tab (by place_id and, optionally, by website domain) and within this run\nconst s = $('Settings').first().json;\nconst skipDomains = s.skip_known_domains !== false;\nconst max = parseInt(s.max_new_leads_per_run, 10) || 50;\nconst knownIds = new Set();\nconst knownDomains = new Set();\nfor (const { json: row } of $input.all()) {\n  if (row.place_id) knownIds.add(String(row.place_id));\n  if (row.domain) knownDomains.add(String(row.domain).toLowerCase());\n}\nconst byDomain = new Map();\nconst out = [];\nfor (const { json: lead } of $('Clean and pre-qualify').all()) {\n  if (knownIds.has(lead.place_id)) continue;\n  if (lead.domain && skipDomains && knownDomains.has(lead.domain)) continue;\n  // several branches of one business share a website: keep the best-reviewed one, count the rest\n  if (lead.domain && byDomain.has(lead.domain)) {\n    const first = byDomain.get(lead.domain);\n    first.other_locations += 1;\n    if (lead.reviews > first.reviews) Object.assign(first, { ...lead, other_locations: first.other_locations });\n    continue;\n  }\n  const entry = { ...lead, other_locations: 0 };\n  if (lead.domain) byDomain.set(lead.domain, entry);\n  out.push(entry);\n}\nout.sort((a, b) => b.reviews - a.reviews);\nreturn out.slice(0, max).map((json) => ({ json }));"
+      },
+      "id": "3d4fc94b-e8e4-4712-a446-32da48d23f73",
+      "name": "Drop known leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2688,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "2207cd55-b816-4b10-a15d-70e10df6f446",
+      "name": "Loop over leads",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2976,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3fb8a945-b8bf-4ebc-a5ba-ee2bbc4c751b",
+              "leftValue": "={{ !!$json.website }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "6452af49-4620-4281-adee-a3a88a0b3065",
+      "name": "Has website?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3216,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "web",
+        "operation": "/web/v1/contacts",
+        "parameters": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $json.website }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "Url (Website URL or bare domain (e.g. example.com).)",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "country",
+              "displayName": "Country (Two-letter country to read the site from; also the country for phone numbers wri)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "af8b34e9-9cae-472c-a15f-861afff10671",
+      "name": "Find website contacts",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 2,
+      "position": [
+        3456,
+        132
+      ],
+      "credentials": {
+        "apishApi": {
+          "name": "API.SH account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Adds the emails, phones and social profiles found on the lead's website\nconst lead = $('Loop over leads').first().json;\nconst c = $input.first().json;\nif (c.error) {\n  return [{ json: { ...lead, best_email: '', best_email_type: '', email_on_own_domain: false, emails: '', contact_phones: '', socials: '', social_count: 0, enrichment: `lookup failed: ${String(c.error).slice(0, 150)}` } }];\n}\nconst generic = /^(info|hello|contact|office|admin|support|sales|team|reception|frontdesk|appointments?|booking|bookings|mail|enquiries|inquiries)@/;\nconst emails = (c.emails || [])\n  .map((e) => ({ email: String(e.email || '').toLowerCase(), own: e.own_domain === true }))\n  .filter((e) => e.email)\n  // own-domain addresses first, then named people before generic inboxes\n  .sort((a, b) => (Number(b.own) - Number(a.own)) || (Number(generic.test(a.email)) - Number(generic.test(b.email))));\nconst best = emails[0];\nconst socials = Object.entries(c.socials || {})\n  .filter(([, urls]) => Array.isArray(urls) && urls.length)\n  .map(([network, urls]) => `${network}: ${urls[0]}`);\nreturn [{ json: {\n  ...lead,\n  best_email: best ? best.email : '',\n  best_email_type: !best ? '' : generic.test(best.email) ? 'generic' : 'personal',\n  email_on_own_domain: best ? best.own : false,\n  emails: emails.map((e) => e.email).join(', '),\n  contact_phones: (c.phones || []).map((p) => p.e164 || p.phone).filter(Boolean).join(', '),\n  socials: socials.join(' | '),\n  social_count: socials.length,\n  enrichment: 'ok',\n} }];"
+      },
+      "id": "29635b6d-20f5-4ae4-a105-38202fde2ee1",
+      "name": "Attach contacts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3696,
+        132
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
+      "id": "100e5d83-f798-488f-ab26-8573755828c4",
+      "name": "Pause between leads",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3936,
+        220
+      ],
+      "webhookId": "e27c9cba-8472-4345-a8b2-cb244ad413e9"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Scores each lead 0-100 from reputation, reachability and online presence, and says why\nconst s = $('Settings').first().json;\nconst hot = Number(s.hot_score) || 70;\nconst warm = Number(s.warm_score) || 45;\nconst now = new Date().toISOString();\nreturn $input.all().map(({ json: l }) => {\n  let score = 0;\n  const why = [];\n  if (l.rating >= 4.7) { score += 20; why.push(`rating ${l.rating}`); }\n  else if (l.rating >= 4.3) { score += 12; why.push(`rating ${l.rating}`); }\n  else if (l.rating >= 4.0) score += 6;\n  const reviews = Number(l.reviews) || 0;\n  score += Math.min(20, Math.round(Math.log10(reviews + 1) * 8)); // diminishing returns on review volume\n  if (reviews >= 100) why.push('well reviewed');\n  if (l.website) score += 10; else why.push('no website');\n  if (l.best_email) { score += l.best_email_type === 'personal' ? 25 : 18; why.push(`${l.best_email_type} email`); }\n  if (l.email_on_own_domain) score += 5;\n  if (l.phone) score += 5;\n  score += Math.min(10, (Number(l.social_count) || 0) * 4);\n  if (l.verified) score += 3;\n  if (l.has_booking) { score += 2; why.push('takes online bookings'); }\n  if (l.other_locations > 0) why.push(`multi-location (+${l.other_locations})`);\n  score = Math.min(100, score);\n  return { json: {\n    place_id: l.place_id, name: l.name, category: l.category, city: l.city, state: l.state, address: l.address,\n    phone: l.phone, website: l.website, domain: l.domain, best_email: l.best_email || '', best_email_type: l.best_email_type || '',\n    emails: l.emails || '', contact_phones: l.contact_phones || '', socials: l.socials || '',\n    rating: l.rating, reviews: l.reviews, other_locations: l.other_locations || 0,\n    score, tier: score >= hot ? 'hot' : score >= warm ? 'warm' : 'cold', score_reasons: why.join('; '),\n    maps_url: l.maps_url, search: l.search, enrichment: l.enrichment || 'no website', status: 'new', found_at: now,\n  } };\n});"
+      },
+      "id": "e40c08a9-273d-447c-ae1d-a09077a9154f",
+      "name": "Score leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "id": "db3c1511-8602-4c27-a0c8-cd899a1fae73",
+      "name": "Save leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        4464,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Summary email: totals per tier and per search, and the top leads of this run\nconst rows = $input.all().map((i) => i.json);\nconst esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst tiers = { hot: 0, warm: 0, cold: 0 };\nconst bySearch = {};\nfor (const r of rows) {\n  tiers[r.tier] = (tiers[r.tier] || 0) + 1;\n  bySearch[r.search] = (bySearch[r.search] || 0) + 1;\n}\nconst failed = $('Failed search?').all(0).length;\nconst top = [...rows].sort((a, b) => b.score - a.score).slice(0, 20);\nconst table = top.map((r) => `<tr><td>${r.score}</td><td>${esc(r.tier)}</td><td><a href=\"${esc(r.maps_url)}\">${esc(r.name)}</a></td><td>${esc(r.category)}</td><td>${esc(r.city)}</td><td>${esc(r.best_email)}</td><td>${esc(r.phone)}</td></tr>`).join('');\nconst searches = Object.entries(bySearch).map(([q, n]) => `<li>${esc(q)}: ${n}</li>`).join('');\nconst html = `<h2>New local leads</h2>\n<p><b>${rows.length}</b> new leads saved to your sheet: <b>${tiers.hot}</b> hot, <b>${tiers.warm}</b> warm, <b>${tiers.cold}</b> cold.${failed ? ` ${failed} search page(s) failed (see the Errors tab).` : ''}</p>\n<h3>By search</h3><ul>${searches}</ul>\n<h3>Top leads</h3>\n<table border=\"1\" cellpadding=\"4\" cellspacing=\"0\"><tr><th>Score</th><th>Tier</th><th>Business</th><th>Category</th><th>City</th><th>Email</th><th>Phone</th></tr>${table}</table>`;\nreturn [{ json: { subject: `Lead digest: ${rows.length} new (${tiers.hot} hot)`, html } }];"
+      },
+      "id": "5f8280dc-3e44-40ee-a562-f8dbe65dc1b6",
+      "name": "Build digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4704,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Settings').first().json.digest_email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "de9f307e-213e-40d3-a939-e3f773dc266b",
+      "name": "Email lead digest",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        4944,
+        0
+      ],
+      "webhookId": "a804e4ba-4751-41bd-a689-c58d49a7d4a3",
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "44df624e-62c2-4e01-a5ba-a4e0109db935",
+              "leftValue": "={{ $json.tier === 'hot' }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "c98a6b40-6e32-4818-a911-b670bb0d6150",
+      "name": "Hot leads only",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        4464,
+        264
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One Slack message with the hot leads, best first\nconst leads = $input.all().map((i) => i.json).sort((a, b) => b.score - a.score);\nconst lines = leads.slice(0, 15).map((l) =>\n  `• *${l.name}* (${l.category}, ${l.city}) score ${l.score}\\n   ${l.best_email || 'no email'} · ${l.phone || 'no phone'} · <${l.maps_url}|Maps>${l.website ? ` · <${l.website}|site>` : ''}\\n   _${l.score_reasons}_`);\nconst more = leads.length > 15 ? `\\n…and ${leads.length - 15} more in the Leads tab.` : '';\nreturn [{ json: { text: `:fire: *${leads.length} hot lead${leads.length === 1 ? '' : 's'} ready for outreach*\\n\\n${lines.join('\\n')}${more}` } }];"
+      },
+      "id": "6f0def7b-b0ec-45f6-ab06-083aa7fd4c03",
+      "name": "Format hand-off",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4704,
+        264
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.slack_channel }}",
+          "mode": "name"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "5a8df0e2-caf8-4e8c-ab3d-2be1b32ebffd",
+      "name": "Post hot leads",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        4944,
+        264
+      ],
+      "webhookId": "6a5dee81-5b02-43ea-a9f5-71b87d4e4c43",
+      "credentials": {
+        "slackApi": {
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Monday at 7": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Read searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read searches": {
+      "main": [
+        [
+          {
+            "node": "Build search pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build search pages": {
+      "main": [
+        [
+          {
+            "node": "Loop over searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop over searches": {
+      "main": [
+        [
+          {
+            "node": "Failed search?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Google Maps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Google Maps": {
+      "main": [
+        [
+          {
+            "node": "Tag places with search",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Note failed search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag places with search": {
+      "main": [
+        [
+          {
+            "node": "Pause between searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Note failed search": {
+      "main": [
+        [
+          {
+            "node": "Pause between searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pause between searches": {
+      "main": [
+        [
+          {
+            "node": "Loop over searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failed search?": {
+      "main": [
+        [
+          {
+            "node": "Log failed searches",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clean and pre-qualify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log failed searches": {
+      "main": [
+        [
+          {
+            "node": "Alert failed searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean and pre-qualify": {
+      "main": [
+        [
+          {
+            "node": "Read existing leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read existing leads": {
+      "main": [
+        [
+          {
+            "node": "Drop known leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drop known leads": {
+      "main": [
+        [
+          {
+            "node": "Loop over leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop over leads": {
+      "main": [
+        [
+          {
+            "node": "Score leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has website?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has website?": {
+      "main": [
+        [
+          {
+            "node": "Find website contacts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause between leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find website contacts": {
+      "main": [
+        [
+          {
+            "node": "Attach contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach contacts": {
+      "main": [
+        [
+          {
+            "node": "Pause between leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pause between leads": {
+      "main": [
+        [
+          {
+            "node": "Loop over leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score leads": {
+      "main": [
+        [
+          {
+            "node": "Save leads",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Hot leads only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save leads": {
+      "main": [
+        [
+          {
+            "node": "Build digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build digest": {
+      "main": [
+        [
+          {
+            "node": "Email lead digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot leads only": {
+      "main": [
+        [
+          {
+            "node": "Format hand-off",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format hand-off": {
+      "main": [
+        [
+          {
+            "node": "Post hot leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

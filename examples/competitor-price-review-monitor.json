@@ -1,0 +1,1704 @@
+{
+  "name": "Track competitor prices and reviews on Amazon, Walmart, eBay",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Competitor price, stock and review monitor for Amazon, Walmart and eBay\n\n### Who is this for\nE-commerce brands, resellers and category managers who sell against the same products on Amazon, Walmart or eBay and need to react when a competitor changes price, runs out of stock or starts collecting bad reviews.\n\n### What it does\nEvery morning it reads your **Watchlist** tab, fetches each listing with the **API.SH** node (Amazon product, Walmart product or eBay item, chosen from the URL) and compares it with the last check: price drops and rises above your thresholds, the moment a competitor goes under your own price, stock changes, rating drops and new 1-2 star reviews (Amazon and Walmart, for rows with `watch_reviews` set). Every check is added to a **History** tab, the watchlist row is updated, new low-star reviews go to a **Reviews** log (so each one alerts once), and one Slack message lists everything that changed. Every Monday a second schedule posts a week-over-week digest built from the history. Failed lookups go to an **Errors** tab and Slack, and the other products are still checked.\n\n### Setup\n1. Install the verified **API.SH** node (nodes panel → search \"API.SH\"), create a free account at [api.sh](https://api.sh/integrations/n8n?utm_source=n8n&utm_medium=integration&utm_campaign=template-competitor-price-review-monitor) and add your API key as an **API.SH** credential.\n2. Create a Google Sheet with a **Watchlist** tab and headers `product`, `platform`, `url`, `our_price`, `watch_reviews`, `active`, `last_price`, `last_rating`, `last_review_count`, `last_units_sold`, `last_in_stock`, `last_change_pct`, `last_checked`, `status`. Fill in product, url (or an ASIN), our_price and watch_reviews (yes/no); the rest is written by the workflow. Add empty tabs **History**, **Reviews** and **Errors**.\n3. Open **Settings**: sheet URL, delivery ZIP for Amazon prices, alert thresholds and Slack channel.\n4. Connect Google Sheets and Slack and run it once by hand: the first run stores the baseline, alerts start from the second.\n\n### How to customise\n- Thresholds live in **Settings**; the rules themselves are in **Compare with history**.\n- Review checks cost more than price checks, so turn `watch_reviews` on only where it matters.\n- Send **Post changes** to email or a ticket instead of Slack, or add Target or Best Buy listings with another API.SH node in the marketplace switch.",
+        "height": 1240,
+        "width": 640
+      },
+      "id": "591f02b1-df94-481b-a977-1e85de1baab8",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        -396
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Schedules and settings\nThe daily run checks prices; the Monday run builds the weekly digest.",
+        "height": 608,
+        "width": 660,
+        "color": 7
+      },
+      "id": "8e57983d-55cb-49cc-a1eb-7050ca74d5dd",
+      "name": "Section setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Load the watchlist\nActive rows only; the marketplace comes from the URL.",
+        "height": 300,
+        "width": 420,
+        "color": 7
+      },
+      "id": "3256d06d-08d6-4961-ab33-a325ea2ef4b9",
+      "name": "Section load",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        728,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Check each listing\nOne API.SH call per product, routed by marketplace and mapped to one shape. Rows with watch_reviews also fetch the newest reviews. A failed lookup is marked and the loop continues.",
+        "height": 828,
+        "width": 1908,
+        "color": 7
+      },
+      "id": "33011478-3f30-4775-ad51-98aa562c236d",
+      "name": "Section check",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1256,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. Compare with history\nAgainst the stored price, rating and stock, and the review log.",
+        "height": 300,
+        "width": 660,
+        "color": 7
+      },
+      "id": "67a59459-7938-462e-a986-1907a94e4d9c",
+      "name": "Section compare",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3272,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Error path\nFailed checks go to the Errors tab and one Slack alert.",
+        "height": 300,
+        "width": 420,
+        "color": 3
+      },
+      "id": "e16b7119-a4c0-4ce8-aa95-a5d3da214591",
+      "name": "Section errors",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3512,
+        246
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 5. Save and alert\nUpdate the watchlist, append history, log new reviews, post one Slack message on days with changes.",
+        "height": 960,
+        "width": 420,
+        "color": 7
+      },
+      "id": "3c0c25cf-a34b-4f2e-a5ca-4e880bd7b906",
+      "name": "Section save",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4040,
+        -326
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 6. Weekly digest\nMondays: the last 7 days of history per product, biggest moves first.",
+        "height": 300,
+        "width": 660,
+        "color": 5
+      },
+      "id": "7e9dd184-b28a-4709-a331-d6aad68a1261",
+      "name": "Section weekly",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        728,
+        730
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "0849dc44-af77-4683-a5e4-52c2b241aaf5",
+      "name": "Every day at 7",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "f91a42d3-0b11-46a0-acf1-e87f0e0891c8",
+      "name": "Every Monday at 8",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        308
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a7e82df5-e06b-449e-ae20-85ca9ae43b36",
+              "name": "sheet_url",
+              "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit",
+              "type": "string"
+            },
+            {
+              "id": "396d9b22-307b-4661-adb7-2d7da461d563",
+              "name": "zip",
+              "value": "10001",
+              "type": "string"
+            },
+            {
+              "id": "511b5aa1-b563-4d32-a9fe-0efbd89788b2",
+              "name": "price_drop_alert_pct",
+              "value": 5,
+              "type": "number"
+            },
+            {
+              "id": "dbb9bb6d-ec55-4446-ac35-9adceeeb9ebb",
+              "name": "price_rise_alert_pct",
+              "value": 10,
+              "type": "number"
+            },
+            {
+              "id": "a23a0c10-90ef-42c6-ac8d-4e1ac9ca2f3a",
+              "name": "rating_drop_alert",
+              "value": 0.1,
+              "type": "number"
+            },
+            {
+              "id": "00c33c10-e442-4687-a68b-33f30ac18ce3",
+              "name": "low_star_max",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "a1c1a081-4125-4fd7-aa4b-275e8057d37d",
+              "name": "slack_channel",
+              "value": "#pricing",
+              "type": "string"
+            },
+            {
+              "id": "ecabb98a-f5df-48db-a58b-09f3825c2a4b",
+              "name": "run_type",
+              "value": "={{ $('Every Monday at 8').isExecuted ? 'weekly' : 'daily' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "56c15216-b544-4bf2-a90f-4e81eb6998f1",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        154
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6abb642c-1c62-442d-a5e2-c8fb6525f7fc",
+              "leftValue": "={{ $json.run_type === 'weekly' }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "38f7f077-a9b3-4013-a59f-61f3c79f2ad7",
+      "name": "Weekly digest run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        154
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Watchlist",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "ff5bcb40-c71e-40a1-a5dc-ace75534755d",
+      "name": "Read watchlist",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        768,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// One item per active watchlist row; the marketplace comes from the platform column or the URL\nconst num = (v) => { const n = parseFloat(String(v ?? '').replace(/[^0-9.\\-]/g, '')); return Number.isFinite(n) ? n : null; };\nconst yes = (v) => /^(yes|true|1|y)$/i.test(String(v ?? '').trim());\nconst out = [];\nfor (const { json: r } of $input.all()) {\n  const url = String(r.url || '').trim();\n  if (!url || /^(no|false|0|paused)$/i.test(String(r.active ?? '').trim())) continue;\n  let platform = String(r.platform || '').trim().toLowerCase();\n  if (!platform) platform = /amazon\\./i.test(url) || /^B0[A-Z0-9]{8}$/.test(url) ? 'amazon' : /walmart\\./i.test(url) ? 'walmart' : /ebay\\./i.test(url) ? 'ebay' : '';\n  if (!['amazon', 'walmart', 'ebay'].includes(platform)) continue;\n  out.push({ json: {\n    product: r.product || '',\n    platform,\n    url,\n    our_price: num(r.our_price),\n    watch_reviews: yes(r.watch_reviews),\n    last_price: num(r.last_price),\n    last_rating: num(r.last_rating),\n    last_in_stock: r.last_in_stock === '' || r.last_in_stock == null ? null : yes(r.last_in_stock),\n    last_units_sold: num(r.last_units_sold),\n  } });\n}\nif (!out.length) throw new Error('No active products. Add Amazon, Walmart or eBay URLs to the Watchlist tab.');\nreturn out;"
+      },
+      "id": "f4ca98c5-a6e6-4ea0-a372-61869fbfcd76",
+      "name": "Prepare checks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "98e09a13-fb5d-4a30-a9f0-7e471e44565a",
+      "name": "Loop over products",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1296,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4f0e9d37-8f5c-4697-af11-ee4c739adf3c",
+                    "leftValue": "={{ $json.platform === 'amazon' }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Amazon"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e0fd3506-089b-4d96-af60-b80e47eb6e3c",
+                    "leftValue": "={{ $json.platform === 'walmart' }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Walmart"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f0f4fd2f-b55a-4c08-a3f4-d7366a8248f5",
+                    "leftValue": "={{ $json.platform === 'ebay' }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "eBay"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "e6d38e77-680d-4458-a610-49278cecad20",
+      "name": "Route by marketplace",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1536,
+        264
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "amazon",
+        "operation": "/amazon/v1/product",
+        "parameters": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $json.url }}",
+            "zip": "={{ $('Settings').first().json.zip }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "Url (Product URL or ASIN.)",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "domain",
+              "displayName": "Domain (Amazon marketplace: com (default), co.uk, de, fr, it, es, ca, com.mx, com.br, co)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "zip",
+              "displayName": "Zip (Delivery ZIP / postcode: price, availability and delivery dates for that locatio)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "country",
+              "displayName": "Country (Delivery country (ISO code such as US, GB, DE, IN): prices, availability and del)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "05eae036-68e0-4ea9-af8f-a7068da3d8ac",
+      "name": "Amazon product",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        88
+      ],
+      "credentials": {
+        "apishApi": {
+          "name": "API.SH account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "walmart",
+        "operation": "/walmart/v1/product",
+        "parameters": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $json.url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "Url (e.g. 985675140)",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "ab4a7811-2679-407d-a769-fc02475a56b1",
+      "name": "Walmart product",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        264
+      ],
+      "credentials": {
+        "apishApi": {
+          "name": "API.SH account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "ebay",
+        "operation": "/ebay/v1/item",
+        "parameters": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $json.url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "Url (The listing URL (https://www.ebay.com/itm/...).)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "id",
+              "displayName": "Id (The item number instead of url.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "variation_id",
+              "displayName": "Variation Id (A variation id from variations[].id: the listing as shown with that variation se)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "site",
+              "displayName": "Site (eBay country site (default us, or the domain of url): us, uk, de, au, ca, fr, it)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": false,
+              "options": [
+                {
+                  "name": "us",
+                  "value": "us"
+                },
+                {
+                  "name": "uk",
+                  "value": "uk"
+                },
+                {
+                  "name": "de",
+                  "value": "de"
+                },
+                {
+                  "name": "au",
+                  "value": "au"
+                },
+                {
+                  "name": "ca",
+                  "value": "ca"
+                },
+                {
+                  "name": "fr",
+                  "value": "fr"
+                },
+                {
+                  "name": "it",
+                  "value": "it"
+                },
+                {
+                  "name": "es",
+                  "value": "es"
+                }
+              ],
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "13f055f2-54c3-433e-a661-425722af7db5",
+      "name": "eBay item",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        440
+      ],
+      "credentials": {
+        "apishApi": {
+          "name": "API.SH account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reads each marketplace's own field names into one shape\nconst w = $('Loop over products').first().json;\nconst r = $input.first().json;\nconst num = (v) => { const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/[^0-9.\\-]/g, '')); return Number.isFinite(n) ? n : null; };\nlet p = {};\nif (w.platform === 'amazon') {\n  p = { title: r.title, price: num(r.price_value), list_price: num(r.list_price_value), currency: 'USD', availability: r.availability || '', in_stock: /in stock/i.test(r.availability || ''), rating: num(r.rating), review_count: num(r.rating_count), units_sold: null, seller: r.seller || '' };\n} else if (w.platform === 'walmart') {\n  const cur = (r.priceInfo && r.priceInfo.currentPrice) || {};\n  p = { title: r.name, price: num(r.price ?? cur.price), list_price: num(r.was_price), currency: cur.currencyUnit || 'USD', availability: r.availabilityStatus || '', in_stock: r.availabilityStatus === 'IN_STOCK', rating: num(r.averageRating), review_count: num(r.numberOfReviews), units_sold: null, seller: (r.seller_info && r.seller_info.name) || r.sellerName || '' };\n} else {\n  p = { title: r.title, price: num(r.price_value), list_price: null, currency: r.currency || 'USD', availability: r.availability || '', in_stock: /instock/i.test(r.availability || ''), rating: num(r.rating), review_count: null, units_sold: num(r.quantity_sold), seller: (r.seller && r.seller.name) || '' };\n}\nconst link = /^https?:\\/\\//.test(w.url) ? w.url : (r.url || w.url); // an Amazon row may hold a bare ASIN\nreturn [{ json: { ...w, ...p, link, title: String(p.title || '').slice(0, 150), checked_at: new Date().toISOString() } }];"
+      },
+      "id": "15ca7870-2640-4b77-a335-3bc807c81356",
+      "name": "Normalise product",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// A failed lookup becomes one marked item, so the loop carries on and the error is logged at the end\nconst w = $('Loop over products').first().json;\nconst err = $input.first().json.error || 'unknown error';\nreturn [{ json: { _failed: true, product: w.product, platform: w.platform, url: w.url, error: String(err).slice(0, 300), at: new Date().toISOString() } }];"
+      },
+      "id": "528f845c-a756-4d99-ab6c-f558bf474a15",
+      "name": "Mark failed check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0f0c566f-1d9c-48ac-a20d-a23ed430df1d",
+                    "leftValue": "={{ $json.watch_reviews && $json.platform === 'amazon' }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Amazon reviews"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "5c9c8ef8-4782-4df8-a724-96f30238340a",
+                    "leftValue": "={{ $json.watch_reviews && $json.platform === 'walmart' }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Walmart reviews"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Other"
+        }
+      },
+      "id": "2625012b-da87-4d23-aef1-06f01780a893",
+      "name": "Fetch reviews?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2304,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "amazon",
+        "operation": "/amazon/v1/reviews",
+        "parameters": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $json.url }}",
+            "sort": "recent"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "Url (Product URL or ASIN.)",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "domain",
+              "displayName": "Domain (Amazon marketplace: com (default), co.uk, de, fr, it, es, ca, com.mx, com.br, co)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "sort",
+              "displayName": "Sort",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": false,
+              "options": [
+                {
+                  "name": "top",
+                  "value": "top"
+                },
+                {
+                  "name": "recent",
+                  "value": "recent"
+                }
+              ]
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "9b13d501-b404-4ad7-a14f-dae63087557d",
+      "name": "Amazon reviews",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        44
+      ],
+      "credentials": {
+        "apishApi": {
+          "name": "API.SH account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "walmart",
+        "operation": "/walmart/v1/reviews",
+        "parameters": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $json.url }}",
+            "sort": "submission-desc"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "Url (The product URL or id.)",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "page",
+              "displayName": "Page (Page number.)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "sort",
+              "displayName": "Sort (relevancy (default), helpful, submission-desc, submission-asc, rating-desc, rati)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": false,
+              "options": [
+                {
+                  "name": "relevancy",
+                  "value": "relevancy"
+                },
+                {
+                  "name": "helpful",
+                  "value": "helpful"
+                },
+                {
+                  "name": "submission-desc",
+                  "value": "submission-desc"
+                },
+                {
+                  "name": "submission-asc",
+                  "value": "submission-asc"
+                },
+                {
+                  "name": "rating-desc",
+                  "value": "rating-desc"
+                },
+                {
+                  "name": "rating-asc",
+                  "value": "rating-asc"
+                }
+              ]
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "9f3de6f7-7734-44ad-a800-24b178e17ad7",
+      "name": "Walmart reviews",
+      "type": "n8n-nodes-apish.apish",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        220
+      ],
+      "credentials": {
+        "apishApi": {
+          "name": "API.SH account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keeps the newest reviews at or under the star limit in Settings\nconst p = $('Normalise product').first().json;\nconst r = $input.first().json;\nconst max = Number($('Settings').first().json.low_star_max) || 2;\nif (r.error) return [{ json: { ...p, low_star_reviews: [], review_note: `reviews not checked: ${String(r.error).slice(0, 150)}` } }];\nconst low = (r.reviews || [])\n  .filter((x) => x.id && Number(x.rating) <= max)\n  .map((x) => ({ review_id: `${p.platform}:${x.id}`, rating: Number(x.rating), title: x.title || '', text: String(x.text || '').slice(0, 500), date: x.date_iso || x.date || '', author: x.author || '' }));\nreturn [{ json: { ...p, low_star_reviews: low, review_note: '' } }];"
+      },
+      "id": "4fdd8b97-f025-43b2-aa4b-c2d662bd1816",
+      "name": "Collect low-star reviews",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2784,
+        132
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "e9e9214e-f417-4297-a202-7c039804e81b",
+      "name": "Pause between products",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3024,
+        308
+      ],
+      "webhookId": "8c7728da-e10b-4cbe-ae01-9ab625c24862"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3dae8f46-9a60-4bb4-a1ef-b58ecb3fbdd2",
+              "leftValue": "={{ $json._failed === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "1106bd3c-483b-4d15-a0ad-183eaa371dd3",
+      "name": "Failed check?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3312,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Reviews",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "ad41226f-f684-4bef-aece-9459e7e6e54c",
+      "name": "Read review log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3552,
+        0
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compares today's check with the values stored in the watchlist and the review log, and lists what changed\nconst s = $('Settings').first().json;\nconst dropPct = Number(s.price_drop_alert_pct) || 5;\nconst risePct = Number(s.price_rise_alert_pct) || 10;\nconst ratingDrop = Number(s.rating_drop_alert) || 0.1;\nconst knownReviews = new Set($input.all().map((i) => String(i.json.review_id || '')).filter(Boolean));\nconst round = (v) => Math.round(v * 10) / 10;\nconst out = [];\nfor (const { json: p } of $('Failed check?').all(1)) {\n  const events = [];\n  const change = p.price != null && p.last_price ? round(((p.price - p.last_price) / p.last_price) * 100) : null;\n  if (p.price == null) {\n    if (p.last_price != null) events.push(`no price shown (${p.availability || 'unavailable'})`);\n  } else {\n    if (change != null && change <= -dropPct) events.push(`price down ${Math.abs(change)}% (${p.last_price} → ${p.price})`);\n    if (change != null && change >= risePct) events.push(`price up ${change}% (${p.last_price} → ${p.price})`);\n    // alert once, when the competitor crosses under your price\n    if (p.our_price != null && p.price < p.our_price && (p.last_price == null || p.last_price >= p.our_price)) events.push(`now under your price (${p.price} vs ${p.our_price})`);\n  }\n  if (p.last_in_stock === true && p.in_stock === false) events.push('went out of stock');\n  if (p.last_in_stock === false && p.in_stock === true) events.push('back in stock');\n  if (p.rating != null && p.last_rating != null && round(p.last_rating - p.rating) >= ratingDrop) events.push(`rating fell ${p.last_rating} → ${p.rating}`);\n  const newReviews = (p.low_star_reviews || []).filter((r) => !knownReviews.has(r.review_id));\n  if (newReviews.length) events.push(`${newReviews.length} new low-star review(s)`);\n  const sold = p.units_sold != null && p.last_units_sold != null ? p.units_sold - p.last_units_sold : null;\n  out.push({ json: {\n    // watchlist columns (written back, matched on url)\n    url: p.url,\n    last_price: p.price ?? p.last_price ?? '',\n    last_rating: p.rating ?? '',\n    last_review_count: p.review_count ?? '',\n    last_units_sold: p.units_sold ?? '',\n    last_in_stock: p.in_stock,\n    last_change_pct: change ?? '',\n    last_checked: p.checked_at,\n    status: events.length ? events.join('; ') : (p.review_note || 'no change'),\n    // used by the history, review and alert steps\n    _p: p,\n    _change: change,\n    _sold_since_last: sold,\n    _events: events,\n    _new_reviews: newReviews,\n  } });\n}\nreturn out;"
+      },
+      "id": "b6b31202-a177-4dbc-a0cd-92e7629ec43f",
+      "name": "Compare with history",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3792,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Errors",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "id": "8975614c-c0d4-4365-a849-a20943810eef",
+      "name": "Log failed checks",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3552,
+        396
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.slack_channel }}",
+          "mode": "name"
+        },
+        "text": "=:warning: Price monitor: {{ $('Failed check?').all(0).length }} product check(s) failed today. First: {{ $json.product || $json.url }} ({{ $json.platform }}): {{ $json.error }}. Details are in the Errors tab.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "4d973b05-e2f8-474e-a5cb-e3a3f67d81d2",
+      "name": "Alert failed checks",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        3792,
+        396
+      ],
+      "executeOnce": true,
+      "webhookId": "d9c97dd1-786b-463a-ac87-1b833e6f82e1",
+      "credentials": {
+        "slackApi": {
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Watchlist",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "url"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "e3b1387a-0032-4476-a23b-08cf696fa4e8",
+      "name": "Update watchlist",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        4080,
+        -176
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// One price history row per product per run (the weekly digest reads these)\nreturn $input.all().map(({ json: c }) => ({ json: {\n  date: c._p.checked_at.slice(0, 10),\n  checked_at: c._p.checked_at,\n  product: c._p.product,\n  platform: c._p.platform,\n  url: c._p.url,\n  link: c._p.link,\n  price: c._p.price ?? '',\n  list_price: c._p.list_price ?? '',\n  currency: c._p.currency,\n  in_stock: c._p.in_stock,\n  rating: c._p.rating ?? '',\n  review_count: c._p.review_count ?? '',\n  units_sold: c._p.units_sold ?? '',\n  seller: c._p.seller,\n  change_pct: c._change ?? '',\n  our_price: c._p.our_price ?? '',\n  new_low_reviews: c._new_reviews.length,\n} }));"
+      },
+      "id": "02353e46-3015-433c-afc6-5cdbd6ddd877",
+      "name": "History rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4080,
+        44
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "History",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "id": "c0ae58fb-de23-46d0-af38-325eee2e1f31",
+      "name": "Append price history",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        4320,
+        44
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// One row per new low-star review; the review log is what keeps them from alerting twice\nconst now = new Date().toISOString();\nconst out = [];\nfor (const { json: c } of $input.all()) {\n  for (const r of c._new_reviews) out.push({ json: { review_id: r.review_id, product: c._p.product, platform: c._p.platform, url: c._p.url, rating: r.rating, title: r.title, text: r.text, review_date: r.date, found_at: now } });\n}\nreturn out;"
+      },
+      "id": "5c15a760-140b-4d92-a6cd-4543bcef4d3b",
+      "name": "Review rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4080,
+        264
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Reviews",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "insertInNewColumn"
+        }
+      },
+      "id": "d4d4a9d2-ffe8-4b41-a91d-7ac938b4f1e0",
+      "name": "Log new reviews",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        4320,
+        264
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// One Slack message with every product that changed; nothing is sent on a quiet day\nconst changed = $input.all().map((i) => i.json).filter((c) => c._events.length);\nif (!changed.length) return [];\nconst lines = changed.map((c) => {\n  const p = c._p;\n  const name = p.product || p.title;\n  const reviews = c._new_reviews.slice(0, 2).map((r) => `\\n      ${'★'.repeat(r.rating)} \"${String(r.title || r.text).slice(0, 100)}\"`).join('');\n  return `• *${name}* on ${p.platform}: ${c._events.join(', ')} · <${p.link}|open>${reviews}`;\n});\nreturn [{ json: { text: `:rotating_light: *Competitor changes today* (${changed.length})\\n${lines.join('\\n')}` } }];"
+      },
+      "id": "9571ec3c-5d26-4393-a9b4-5ebd65c62300",
+      "name": "Build alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4080,
+        484
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.slack_channel }}",
+          "mode": "name"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "1a467250-4e17-456c-aea8-28f78eda5d9d",
+      "name": "Post changes",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        4320,
+        484
+      ],
+      "webhookId": "9e11c00d-eef1-4a5a-a14f-6ce70c773940",
+      "credentials": {
+        "slackApi": {
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.sheet_url }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "History",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "51d96dc0-2704-4f5c-a4ed-072330d2f031",
+      "name": "Read price history",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        768,
+        880
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Week-over-week view per product from the History tab\nconst since = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);\nconst num = (v) => { const n = parseFloat(String(v ?? '').replace(/[^0-9.\\-]/g, '')); return Number.isFinite(n) ? n : null; };\nconst groups = new Map();\nfor (const { json: h } of $input.all()) {\n  if (!h.url || String(h.date || '') < since) continue;\n  if (!groups.has(h.url)) groups.set(h.url, []);\n  groups.get(h.url).push(h);\n}\nif (!groups.size) return [{ json: { text: '*Weekly competitor digest:* no checks in the History tab for the last 7 days.' } }];\nconst rows = [];\nfor (const [url, list] of groups) {\n  list.sort((a, b) => String(a.checked_at).localeCompare(String(b.checked_at)));\n  const prices = list.map((h) => num(h.price)).filter((v) => v != null);\n  const first = prices[0];\n  const last = prices[prices.length - 1];\n  const delta = first && last != null ? Math.round(((last - first) / first) * 1000) / 10 : null;\n  const latest = list[list.length - 1];\n  const our = num(latest.our_price);\n  const outOfStock = list.filter((h) => String(h.in_stock).toLowerCase() === 'false').length;\n  const lowReviews = list.reduce((n, h) => n + (num(h.new_low_reviews) || 0), 0);\n  rows.push({ url: latest.link || url, name: latest.product || url, platform: latest.platform, last, min: prices.length ? Math.min(...prices) : null, max: prices.length ? Math.max(...prices) : null, delta, our, under: our != null && last != null && last < our, outOfStock, checks: list.length, lowReviews, rating: latest.rating });\n}\nrows.sort((a, b) => Math.abs(b.delta || 0) - Math.abs(a.delta || 0));\nconst fmt = (v) => (v == null || v === '' ? 'n/a' : Math.round(Number(v) * 100) / 100);\nconst lines = rows.map((r) => `• *${r.name}* (${r.platform}): ${fmt(r.last)} now, ${r.delta == null ? 'no price trend' : `${r.delta > 0 ? '+' : ''}${r.delta}% this week`} · range ${fmt(r.min)}-${fmt(r.max)}${r.under ? ` · :warning: under your ${r.our}` : ''}${r.outOfStock ? ` · out of stock on ${r.outOfStock}/${r.checks} checks` : ''}${r.lowReviews ? ` · ${r.lowReviews} new low-star review(s)` : ''} · rating ${fmt(r.rating)} · <${r.url}|open>`);\nconst under = rows.filter((r) => r.under).length;\nreturn [{ json: { text: `:bar_chart: *Weekly competitor digest* (${rows.length} products, ${under} priced under yours)\\n${lines.join('\\n')}` } }];"
+      },
+      "id": "26baaf03-b58a-45cb-a2b3-e7e9fbd3f95a",
+      "name": "Build weekly digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Settings').first().json.slack_channel }}",
+          "mode": "name"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "e5515905-3f69-4be5-a8db-e80cbec4d607",
+      "name": "Post weekly digest",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1248,
+        880
+      ],
+      "webhookId": "0dd60ead-848d-4c4f-a563-caa6a60e8c5d",
+      "credentials": {
+        "slackApi": {
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every day at 7": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Monday at 8": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Weekly digest run?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly digest run?": {
+      "main": [
+        [
+          {
+            "node": "Read price history",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read watchlist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read price history": {
+      "main": [
+        [
+          {
+            "node": "Build weekly digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build weekly digest": {
+      "main": [
+        [
+          {
+            "node": "Post weekly digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read watchlist": {
+      "main": [
+        [
+          {
+            "node": "Prepare checks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare checks": {
+      "main": [
+        [
+          {
+            "node": "Loop over products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop over products": {
+      "main": [
+        [
+          {
+            "node": "Failed check?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by marketplace",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by marketplace": {
+      "main": [
+        [
+          {
+            "node": "Amazon product",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Walmart product",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "eBay item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Amazon product": {
+      "main": [
+        [
+          {
+            "node": "Normalise product",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark failed check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walmart product": {
+      "main": [
+        [
+          {
+            "node": "Normalise product",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark failed check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "eBay item": {
+      "main": [
+        [
+          {
+            "node": "Normalise product",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark failed check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark failed check": {
+      "main": [
+        [
+          {
+            "node": "Pause between products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise product": {
+      "main": [
+        [
+          {
+            "node": "Fetch reviews?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch reviews?": {
+      "main": [
+        [
+          {
+            "node": "Amazon reviews",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Walmart reviews",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pause between products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Amazon reviews": {
+      "main": [
+        [
+          {
+            "node": "Collect low-star reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walmart reviews": {
+      "main": [
+        [
+          {
+            "node": "Collect low-star reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect low-star reviews": {
+      "main": [
+        [
+          {
+            "node": "Pause between products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pause between products": {
+      "main": [
+        [
+          {
+            "node": "Loop over products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failed check?": {
+      "main": [
+        [
+          {
+            "node": "Log failed checks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read review log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log failed checks": {
+      "main": [
+        [
+          {
+            "node": "Alert failed checks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read review log": {
+      "main": [
+        [
+          {
+            "node": "Compare with history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare with history": {
+      "main": [
+        [
+          {
+            "node": "Update watchlist",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "History rows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Review rows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "History rows": {
+      "main": [
+        [
+          {
+            "node": "Append price history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review rows": {
+      "main": [
+        [
+          {
+            "node": "Log new reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build alert": {
+      "main": [
+        [
+          {
+            "node": "Post changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

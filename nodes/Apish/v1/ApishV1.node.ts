@@ -1,8 +1,8 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeProperties, INodePropertyOptions, INodeType, INodeTypeBaseDescription, INodeTypeDescription } from "n8n-workflow";
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from "n8n-workflow";
 // Version 1: resources (platforms), operations (endpoints) and their parameters from the catalog bundled at build time
-// (catalog.ts, generated). Kept so workflows built with it keep running unchanged; new nodes use version 2.
-import { CATALOG } from "../catalog";
+// (v1/catalog.ts, frozen at 0.3.0). Kept so workflows built with it keep running unchanged; new nodes use version 2.
+import { CATALOG } from "./catalog";
 import { OPTIONS_PROPERTY, accountProperties, accountRequest, applyOptions, callApi } from "../shared";
 
 // built outside the property literal: n8n's lint rules read option arrays element by element

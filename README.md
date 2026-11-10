@@ -1,6 +1,6 @@
 # n8n-nodes-apish
 
-The [API.SH](https://api.sh) node for [n8n](https://n8n.io): public web data from TikTok, Instagram, YouTube, Amazon, Zillow, Google and 150+ other platforms as clean JSON, inside your workflows. One node, one credential, 700+ endpoints.
+The [API.SH](https://api.sh) node for [n8n](https://n8n.io): public web data from TikTok, Instagram, YouTube, Amazon, Zillow, Google and 960+ other platforms as clean JSON, inside your workflows. One node, one credential, 6,300+ endpoints.
 
 ## Install
 
@@ -33,7 +33,7 @@ Every item carries `_apish.request_id` and `_apish.credits_used`. Failed calls r
 
 Since version 0.3.0 (node version 2) the platform and endpoint lists come live from API.SH's public catalog (`GET https://api.api.sh/catalog`, free, no key), and each endpoint's parameters from `/catalog?route=…`, cached for an hour. New platforms, new endpoints and price changes show up without updating the package. If api.api.sh can't be reached while you edit, the node falls back to the list bundled in the package. Running a workflow doesn't read the catalog.
 
-Nodes added before 0.3.0 stay on node version 1 (the bundled list, one field per parameter) and keep running unchanged. To switch one to version 2, add a new API.SH node and pick the same platform and endpoint.
+Nodes added before 0.3.0 stay on node version 1 (the list bundled with 0.3.0, one field per parameter) and keep running unchanged. To switch one to version 2, add a new API.SH node and pick the same platform and endpoint.
 
 ## Example workflow
 
