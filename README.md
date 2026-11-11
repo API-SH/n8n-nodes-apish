@@ -1,6 +1,6 @@
 # n8n-nodes-apish
 
-The [API.SH](https://api.sh) node for [n8n](https://n8n.io): public web data from TikTok, Instagram, YouTube, Amazon, Zillow, Google and 960+ other platforms as clean JSON, inside your workflows. One node, one credential, 6,300+ endpoints.
+The [API.SH](https://api.sh) node for [n8n](https://n8n.io): public web data from around 1,000 websites (search engines, social media, e-commerce, real estate, jobs, travel, news and sports: Google, Amazon, TikTok, Zillow and more) as clean JSON, inside your workflows. One node, one credential, thousands of endpoints.
 
 ## Install
 
